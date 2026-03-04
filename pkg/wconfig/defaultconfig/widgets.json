@@ -60,5 +60,15 @@
                 "view": "crew"
             }
         }
+    },
+    "defwidget@devservers": {
+        "display:order": 1,
+        "icon": "server",
+        "label": "servers",
+        "blockdef": {
+            "meta": {
+                "view": "devservers"
+            }
+        }
     }
 }
