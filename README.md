@@ -1,109 +1,157 @@
-<p align="center">
-  <a href="https://www.waveterm.dev">
-	<picture>
-		<source media="(prefers-color-scheme: dark)" srcset="./assets/wave-dark.png">
-		<source media="(prefers-color-scheme: light)" srcset="./assets/wave-light.png">
-		<img alt="Wave Terminal Logo" src="./assets/wave-light.png" width="240">
-	</picture>
-  </a>
-  <br/>
-</p>
+# Terminus
 
-# Wave Terminal
+**A mission control terminal for AI agent crews.** Forked from [Wave Terminal](https://github.com/wavetermdev/waveterm) (v0.14.1-beta.0).
 
-<div align="center">
+Terminus extends Wave's block-based terminal with first-class support for managing multiple AI agents running in parallel tmux sessions. It's built for workflows where you're orchestrating a crew of specialized agents — each with their own identity, terminal theme, and persistent session — from a single unified interface.
 
-[English](README.md) | [한국어](README.ko.md)
+---
 
-</div>
+## What Terminus Adds
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
+### Agent Pane Headers
 
-Wave is an open-source, AI-integrated terminal for macOS, Linux, and Windows. It works with any AI model. Bring your own API keys for OpenAI, Claude, or Gemini, or run local models via Ollama and LM Studio. No accounts required.
+Every terminal block can be assigned to an agent. The header shows the agent's name, role, avatar, and a colored accent border. Switching agents is instant — use the header dropdown to pick an agent, and the pane restarts into that agent's tmux session automatically.
 
-Wave also supports durable SSH sessions that survive network interruptions and restarts, with automatic reconnection. Edit remote files with a built-in graphical editor and preview files inline without leaving the terminal.
+- 32px circular avatars loaded via IPC base64 bridge
+- Per-agent color accents on block borders
+- Typeahead modal for fast agent switching (fuzzy search by name or role)
+- "No Agent" option returns to a bare shell
 
-![WaveTerm Screenshot](./assets/wave-screenshot.webp)
+### Agent Session Switching (ForceRestart)
 
-## Key Features
+Agent switching uses WaveTerm's `cmd:initscript.zsh` metadata + `ControllerResyncCommand(forcerestart=true)` to reliably swap terminal sessions. The old PTY is killed, a fresh shell spawns, and the initscript auto-attaches to the agent's tmux session. Works regardless of what the terminal is currently running (Claude Code, vim, etc.).
 
-- Wave AI - Context-aware terminal assistant that reads your terminal output, analyzes widgets, and performs file operations
-- Durable SSH Sessions - Remote terminal sessions survive connection interruptions, network changes, and Wave restarts with automatic reconnection
-- Flexible drag & drop interface to organize terminal blocks, editors, web browsers, and AI assistants
-- Built-in editor for editing remote files with syntax highlighting and modern editor features
-- Rich file preview system for remote files (markdown, images, video, PDFs, CSVs, directories)
-- Quick full-screen toggle for any block - expand terminals, editors, and previews for better visibility, then instantly return to multi-block view
-- AI chat widget with support for multiple models (OpenAI, Claude, Azure, Perplexity, Ollama)
-- Command Blocks for isolating and monitoring individual commands
-- One-click remote connections with full terminal and file system access
-- Secure secret storage using native system backends - store API keys and credentials locally, access them across SSH sessions
-- Rich customization including tab themes, terminal styles, and background images
-- Powerful `wsh` command system for managing your workspace from the CLI and sharing data between terminal sessions
-- Connected file management with `wsh file` - seamlessly copy and sync files between local and remote SSH hosts
+### Agent Themes & Preferences
 
-## Wave AI
+Each agent can have a custom terminal theme and background color. Preferences persist across switches — when you leave an agent, their current theme/bgcolor is saved; when you return, it's restored.
 
-Wave AI is your context-aware terminal assistant with access to your workspace:
+- Per-agent theme via `term:theme` metadata
+- Per-agent background color override via `term:bgcolor`
+- Color picker (react-colorful) for live bgcolor adjustment
+- Preferences stored in `~/.config/terminus-dev/agent-preferences.json`
 
-- **Terminal Context**: Reads terminal output and scrollback for debugging and analysis
-- **File Operations**: Read, write, and edit files with automatic backups and user approval
-- **CLI Integration**: Use `wsh ai` to pipe output or attach files directly from the command line
-- **BYOK Support**: Bring your own API keys for OpenAI, Claude, Gemini, Azure, and other providers
-- **Local Models**: Run local models with Ollama, LM Studio, and other OpenAI-compatible providers
-- **Free Beta**: Included AI credits while we refine the experience
-- **Coming Soon**: Command execution (with approval)
+### Crew Manager Panel
 
-Learn more in our [Wave AI documentation](https://docs.waveterm.dev/waveai) and [Wave AI Modes documentation](https://docs.waveterm.dev/waveai-modes).
+A sidebar widget showing all agents and their live tmux session status. Accessible from the sidebar like any other Wave widget.
 
-## Installation
+- Real-time tmux session monitoring (auto-refreshes every 15s)
+- Active/Inactive sections with green/gray status labels
+- Per-agent avatars, roles, colored status dots, and uptime display
+- **Attach** — opens a new terminal block already connected to the agent's tmux session
+- **Launch** / **Kill** — start or stop individual tmux sessions
+- **Launch All** / **Kill All** — batch operations
 
-Wave Terminal works on macOS, Linux, and Windows.
+### Dev Servers Panel
 
-Platform-specific installation instructions can be found [here](https://docs.waveterm.dev/gettingstarted).
+A sidebar widget that monitors active development servers by scanning listening TCP ports (3000-9999).
 
-You can also install Wave Terminal directly from: [www.waveterm.dev/download](https://www.waveterm.dev/download).
+- Detects node, Python, uvicorn, ruby, php, java, deno, and bun processes
+- Resolves project names from open file descriptors
+- Color-coded port badges by range (green 3xxx, cyan 4xxx, purple 5xxx, amber 8xxx, red 9xxx)
+- **Open** — launches `localhost:{port}` in your default browser
+- **Kill** — terminates the process on that port
+- **Kill All** — batch kill all detected dev servers
+- Auto-refreshes every 30 seconds with manual refresh button
 
-### Minimum requirements
+---
 
-Wave Terminal runs on the following platforms:
+## Agent Architecture
 
-- macOS 11 or later (arm64, x64)
-- Windows 10 1809 or later (x64)
-- Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
+Terminus uses a static agent registry defined in `frontend/app/store/agents.ts`. Each agent has:
 
-The WSH helper runs on the following platforms:
+| Field | Description |
+|-------|-------------|
+| `name` | Display name (capitalized) |
+| `dirName` | Working directory (`agent-{key}`) |
+| `color` | Hex color for UI accents |
+| `role` | Short role description |
+| `avatarPath` | Path to avatar image |
+| `defaultTheme` | Terminal theme name |
 
-- macOS 11 or later (arm64, x64)
-- Windows 10 or later (x64)
-- Linux Kernel 2.6.32 or later (x64), Linux Kernel 3.1 or later (arm64)
+Agents are mapped to tmux sessions by lowercase name. The Crew Manager shows which sessions are running and lets you manage them without leaving the terminal.
 
-## Roadmap
+### Key Files
 
-Wave is constantly improving! Our roadmap will be continuously updated with our goals for each release. You can find it [here](./ROADMAP.md).
+| File | Purpose |
+|------|---------|
+| `frontend/app/store/agents.ts` | Agent registry, preferences, ForceRestart logic |
+| `frontend/app/modals/agenttypeahead.tsx` | Header dropdown agent switcher |
+| `frontend/app/view/crew/crew.tsx` | Crew Manager sidebar panel |
+| `frontend/app/view/devservers/devservers.tsx` | Dev Servers sidebar panel |
+| `frontend/app/block/block.tsx` | Block registry (view type -> ViewModel) |
+| `frontend/app/block/blockutil.tsx` | Icon and label mappings |
+| `pkg/wconfig/defaultconfig/widgets.json` | Sidebar widget definitions |
+| `emain/emain-ipc.ts` | Electron IPC handlers (exec-command) |
 
-Want to provide input to our future releases? Connect with us on [Discord](https://discord.gg/XfvZ334gwU) or open a [Feature Request](https://github.com/wavetermdev/waveterm/issues/new/choose)!
-
-## Links
-
-- Homepage &mdash; https://www.waveterm.dev
-- Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://docs.waveterm.dev
-- X &mdash; https://x.com/wavetermdev
-- Discord Community &mdash; https://discord.gg/XfvZ334gwU
+---
 
 ## Building from Source
 
-See [Building Wave Terminal](BUILD.md).
+See [BUILD.md](BUILD.md). Requires:
 
-## Contributing
+- [Go](https://golang.org/) 1.22+
+- [Node.js](https://nodejs.org/) 22+
+- [go-task](https://taskfile.dev/)
+- [Zig](https://ziglang.org/) (for CGo cross-compilation)
 
-Wave uses GitHub Issues for issue tracking.
+```bash
+task dev    # Launch in dev mode
+```
 
-Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
+---
 
-- [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
-- [Contribution guidelines](CONTRIBUTING.md#before-you-start)
+## Upstream
+
+Terminus is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm), an open-source AI-integrated terminal for macOS, Linux, and Windows. All upstream features — SSH sessions, AI chat, file preview, drag-and-drop blocks, `wsh` CLI — are preserved. See the [Wave documentation](https://docs.waveterm.dev) for those features.
+
+Forked at Wave v0.14.1-beta.0 (`e8d6ff5b`, Feb 28, 2026).
+
+---
 
 ## License
 
-Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
+Terminus is licensed under the Apache-2.0 License, same as upstream Wave Terminal. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for dependency information.
+
+---
+
+## Changelog
+
+### 2026-03-04 — `718fb157` — Dev Servers Panel
+
+- New sidebar widget: Dev Servers panel
+- Scans listening TCP ports 3000-9999 for dev server processes
+- Resolves project names from process file descriptors
+- Color-coded port badges by port range
+- Open button launches localhost URL in default browser
+- Kill button terminates process by port, Kill All for batch
+- Auto-refresh every 30 seconds with manual refresh
+
+### 2026-03-04 — `81fae4d9` — Crew Manager + ForceRestart Session Switching
+
+- New sidebar widget: Crew Manager panel with live tmux session monitoring
+- Active/Inactive sections with avatars, roles, status dots, uptime
+- Attach, Launch, Kill per agent; Launch All / Kill All batch controls
+- Replaced keystroke injection (ControllerInputCommand) with ForceRestart pattern
+- Agent switching now uses `cmd:initscript.zsh` + `ControllerResyncCommand(forcerestart=true)`
+- Works reliably regardless of what the terminal is running
+- Added `exec-command` IPC handler for shell command execution from renderer
+- Added `agent:name`, `agent:color`, `agent:role` to block MetaType
+
+### 2026-03-04 — `848878fc` — Agent Themes & Preferences
+
+- Per-agent terminal theme switching via `term:theme` metadata
+- Per-agent background color override via `term:bgcolor`
+- Color picker component (react-colorful) for live bgcolor adjustment
+- Agent preferences persist to `agent-preferences.json` — saved on switch-out, restored on switch-in
+- Tmux session switching via header dropdown
+
+### 2026-03-04 — `bd466a74` — Terminus Fork + Agent Pane Headers
+
+- Forked Wave Terminal v0.14.1-beta.0 as Terminus
+- Renamed all user-facing strings (package.json, electron-builder, menus, Go backend, Taskfile)
+- Migrated config/data directories from Wave to Terminus
+- Agent pane headers: per-block agent assignment with name, role, avatar, colored border
+- Typeahead modal for agent selection with fuzzy search
+- 32px circular avatars loaded via IPC base64 bridge
+- Static agent registry with 16 crew members
+- Agent color table with roles and theme assignments
