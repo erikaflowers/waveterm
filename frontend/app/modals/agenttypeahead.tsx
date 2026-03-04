@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { agentsAtom, type AgentInfo } from "@/app/store/agents";
+import { agentsAtom, getAgentPrefs, setAgentPref, switchAgentSession, type AgentInfo } from "@/app/store/agents";
 import { globalStore, WOS } from "@/app/store/global";
 import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -9,6 +9,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
+import { stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -58,18 +59,47 @@ const ChangeAgentBlockModal = React.memo(
                 if (agentName === currentAgent) {
                     return;
                 }
+
+                // Save outgoing agent's current prefs
+                if (currentAgent) {
+                    const currentTheme = blockData?.meta?.["term:theme"] as string;
+                    const currentBgColor = blockData?.meta?.["term:bgcolor"] as string;
+                    if (currentTheme) {
+                        await setAgentPref(currentAgent, "term:theme", currentTheme);
+                    }
+                    if (currentBgColor) {
+                        await setAgentPref(currentAgent, "term:bgcolor", currentBgColor);
+                    }
+                }
+
+                // Look up incoming agent + saved prefs
                 const agentInfo = agents.find((a) => a.name === agentName);
+                const savedPrefs = agentName ? getAgentPrefs(agentName) : {};
+
                 const meta: Record<string, any> = {
                     "agent:name": agentName || null,
                     "agent:color": agentInfo?.color || null,
                     "agent:role": agentInfo?.role || null,
+                    "term:theme": savedPrefs["term:theme"] ?? agentInfo?.defaultTheme ?? null,
+                    "term:bgcolor": savedPrefs["term:bgcolor"] ?? null,
                 };
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta,
                 });
+
+                // Switch tmux session (detach old, attach new — or just detach if clearing)
+                if (agentName) {
+                    await switchAgentSession(blockId, agentName, currentAgent);
+                } else if (currentAgent) {
+                    // "No Agent" selected — just detach from tmux
+                    RpcApi.ControllerInputCommand(TabRpcClient, {
+                        blockid: blockId,
+                        inputdata64: stringToBase64("\x02d"),
+                    });
+                }
             },
-            [blockId, currentAgent, agents]
+            [blockId, currentAgent, agents, blockData]
         );
 
         const clearItem: SuggestionConnectionItem = {

@@ -133,6 +133,8 @@ declare global {
         doRefresh: () => void; // do-refresh
         saveTextFile: (fileName: string, content: string) => Promise<boolean>; // save-text-file
         readFileBase64: (filePath: string) => Promise<string | null>; // read-file-base64
+        readTextFile: (filePath: string) => Promise<string | null>; // read-text-file
+        writeTextFile: (filePath: string, content: string) => Promise<boolean>; // write-text-file
     };
 
     type ElectronContextMenuItem = {

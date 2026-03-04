@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getApi } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
 
@@ -11,6 +14,7 @@ interface AgentInfo {
     color: string;
     role: string;
     avatarPath: string;
+    defaultTheme: string;
 }
 
 // Base path for Matilda agent directories
@@ -36,6 +40,21 @@ const AgentColorTable: Record<string, { color: string; role: string }> = {
     art: { color: "#FBBF24", role: "Art Direction" },
 };
 
+// Crew themes defined in ~/.config/terminus-dev/termthemes.json
+// Convention: "crew-{lowercase_name}"
+const CREW_THEME_AGENTS = new Set([
+    "julian", "heavy", "decker", "sellivan", "qin",
+    "lee", "manu", "eliza", "siddig", "samantha",
+]);
+
+function getDefaultTheme(name: string): string {
+    const key = name.toLowerCase();
+    if (CREW_THEME_AGENTS.has(key)) {
+        return `crew-${key}`;
+    }
+    return "default-dark";
+}
+
 function getAvatarPath(name: string): string {
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
     return `${MATILDA_BASE}/agent-art/${capitalized}.jpg`;
@@ -48,6 +67,7 @@ function buildStaticAgentList(): AgentInfo[] {
         color: val.color,
         role: val.role,
         avatarPath: getAvatarPath(key),
+        defaultTheme: getDefaultTheme(key),
     }));
 }
 
@@ -88,5 +108,110 @@ function getAgentColor(name: string): string | null {
     return info?.color ?? null;
 }
 
-export { agentsAtom, AgentColorTable, getAgentColor, getAgentInfo, loadAvatarDataUrl, MATILDA_BASE };
+// --- Per-Agent Preference Persistence ---
+
+type AgentPrefs = Record<string, string | null>;
+const agentPrefsMap = new Map<string, AgentPrefs>();
+let prefsLoaded = false;
+
+function getPrefsFilePath(): string {
+    return getApi().getConfigDir() + "/agent-preferences.json";
+}
+
+async function loadAgentPreferences(): Promise<void> {
+    if (prefsLoaded) return;
+    try {
+        const content = await getApi().readTextFile(getPrefsFilePath());
+        if (content) {
+            const parsed = JSON.parse(content) as Record<string, AgentPrefs>;
+            for (const [key, prefs] of Object.entries(parsed)) {
+                agentPrefsMap.set(key, prefs);
+            }
+        }
+    } catch {
+        // File doesn't exist yet or parse error — start with empty prefs
+    }
+    prefsLoaded = true;
+}
+
+async function saveAgentPreferences(): Promise<void> {
+    const obj: Record<string, AgentPrefs> = {};
+    for (const [key, prefs] of agentPrefsMap.entries()) {
+        if (Object.keys(prefs).length > 0) {
+            obj[key] = prefs;
+        }
+    }
+    const json = JSON.stringify(obj, null, 2);
+    await getApi().writeTextFile(getPrefsFilePath(), json);
+}
+
+function getAgentPrefs(agentName: string): AgentPrefs {
+    return agentPrefsMap.get(agentName.toLowerCase()) ?? {};
+}
+
+async function setAgentPref(agentName: string, key: string, value: string | null): Promise<void> {
+    const name = agentName.toLowerCase();
+    const prefs = agentPrefsMap.get(name) ?? {};
+    if (value == null) {
+        delete prefs[key];
+    } else {
+        prefs[key] = value;
+    }
+    agentPrefsMap.set(name, prefs);
+    await saveAgentPreferences();
+}
+
+// Load prefs on module init
+loadAgentPreferences();
+
+// --- Tmux Session Switching ---
+
+const MAC_STUDIO_HOST = "Mac-Studio";
+const REMOTE_HOST = "erikflowers@100.64.79.114";
+
+async function switchAgentSession(
+    blockId: string,
+    newAgentName: string,
+    previousAgentName: string | null
+): Promise<void> {
+    const sendInput = (data: string) => {
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: blockId,
+            inputdata64: stringToBase64(data),
+        });
+    };
+
+    // If previously attached to a tmux session, detach first
+    if (previousAgentName) {
+        sendInput("\x02d"); // Ctrl+B, d (tmux detach)
+        await new Promise((r) => setTimeout(r, 300));
+    }
+
+    // Build attach command based on local vs remote
+    const sessionName = newAgentName.toLowerCase();
+    const hostname = getApi().getHostName();
+    const isLocal = hostname.startsWith(MAC_STUDIO_HOST);
+
+    let attachCmd: string;
+    if (isLocal) {
+        attachCmd = `tmux attach -t ${sessionName}`;
+    } else {
+        attachCmd = `ssh ${REMOTE_HOST} -t "tmux attach -t ${sessionName}"`;
+    }
+
+    sendInput(attachCmd + "\r");
+}
+
+export {
+    agentsAtom,
+    AgentColorTable,
+    getAgentColor,
+    getAgentInfo,
+    getAgentPrefs,
+    loadAgentPreferences,
+    loadAvatarDataUrl,
+    MATILDA_BASE,
+    setAgentPref,
+    switchAgentSession,
+};
 export type { AgentInfo };

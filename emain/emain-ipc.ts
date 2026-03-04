@@ -512,4 +512,21 @@ export function initIpcHandlers() {
             return null;
         }
     });
+
+    electron.ipcMain.handle("write-text-file", async (_event, filePath: string, content: string) => {
+        try {
+            await fs.promises.writeFile(filePath, content, "utf-8");
+            return true;
+        } catch {
+            return false;
+        }
+    });
+
+    electron.ipcMain.handle("read-text-file", async (_event, filePath: string) => {
+        try {
+            return await fs.promises.readFile(filePath, "utf-8");
+        } catch {
+            return null;
+        }
+    });
 }

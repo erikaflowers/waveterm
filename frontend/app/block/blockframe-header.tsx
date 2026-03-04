@@ -11,6 +11,7 @@ import {
 } from "@/app/block/blockutil";
 import { ColorPickerPopover } from "@/app/block/colorpicker";
 import { ConnectionButton } from "@/app/block/connectionbutton";
+import { setAgentPref } from "@/app/store/agents";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { recordTEvent, refocusNode, WOS } from "@/app/store/global";
@@ -212,8 +213,12 @@ const BlockFrame_Header = ({
                 oref: WOS.makeORef("block", nodeModel.blockId),
                 meta: { "term:bgcolor": hex },
             });
+            const agentName = blockData?.meta?.["agent:name"] as string;
+            if (agentName) {
+                await setAgentPref(agentName, "term:bgcolor", hex);
+            }
         },
-        [nodeModel.blockId]
+        [nodeModel.blockId, blockData]
     );
 
     const handleBgColorReset = React.useCallback(async () => {
@@ -221,7 +226,11 @@ const BlockFrame_Header = ({
             oref: WOS.makeORef("block", nodeModel.blockId),
             meta: { "term:bgcolor": null },
         });
-    }, [nodeModel.blockId]);
+        const agentName = blockData?.meta?.["agent:name"] as string;
+        if (agentName) {
+            await setAgentPref(agentName, "term:bgcolor", null);
+        }
+    }, [nodeModel.blockId, blockData]);
 
     return (
         <div
