@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { agentsAtom, getAgentPrefs, setAgentPref, switchAgentSession, type AgentInfo } from "@/app/store/agents";
+import { agentsAtom, forceRestartWithAgent, getAgentPrefs, setAgentPref, type AgentInfo } from "@/app/store/agents";
 import { globalStore, WOS } from "@/app/store/global";
 import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -9,7 +9,6 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
-import { stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -88,16 +87,8 @@ const ChangeAgentBlockModal = React.memo(
                     meta,
                 });
 
-                // Switch tmux session (detach old, attach new — or just detach if clearing)
-                if (agentName) {
-                    await switchAgentSession(blockId, agentName, currentAgent);
-                } else if (currentAgent) {
-                    // "No Agent" selected — just detach from tmux
-                    RpcApi.ControllerInputCommand(TabRpcClient, {
-                        blockid: blockId,
-                        inputdata64: stringToBase64("\x02d"),
-                    });
-                }
+                // ForceRestart the terminal into the agent's tmux session (or bare shell)
+                await forceRestartWithAgent(blockId, agentName || null);
             },
             [blockId, currentAgent, agents, blockData]
         );

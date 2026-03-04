@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld("api", {
     readFileBase64: (filePath: string) => ipcRenderer.invoke("read-file-base64", filePath),
     readTextFile: (filePath: string) => ipcRenderer.invoke("read-text-file", filePath),
     writeTextFile: (filePath: string, content: string) => ipcRenderer.invoke("write-text-file", filePath, content),
+    execCommand: (command: string) => ipcRenderer.invoke("exec-command", command),
 });
 
 // Custom event for "new-window"

@@ -50,5 +50,15 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@crew": {
+        "display:order": 0,
+        "icon": "users",
+        "label": "crew",
+        "blockdef": {
+            "meta": {
+                "view": "crew"
+            }
+        }
     }
 }

@@ -529,4 +529,16 @@ export function initIpcHandlers() {
             return null;
         }
     });
+
+    electron.ipcMain.handle("exec-command", async (_event, command: string) => {
+        return new Promise<{ stdout: string; stderr: string; code: number }>((resolve) => {
+            child_process.exec(command, { timeout: 10000 }, (error, stdout, stderr) => {
+                resolve({
+                    stdout: stdout ?? "",
+                    stderr: stderr ?? "",
+                    code: error ? (error as any).code ?? 1 : 0,
+                });
+            });
+        });
+    });
 }

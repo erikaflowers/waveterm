@@ -1120,6 +1120,9 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:bgcolor"?: string;
         "term:durable"?: boolean;
+        "agent:name"?: string;
+        "agent:color"?: string;
+        "agent:role"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;

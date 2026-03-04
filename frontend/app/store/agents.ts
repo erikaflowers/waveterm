@@ -1,10 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi } from "@/app/store/global";
+import { atoms, getApi, WOS } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
 
@@ -164,47 +163,33 @@ async function setAgentPref(agentName: string, key: string, value: string | null
 // Load prefs on module init
 loadAgentPreferences();
 
-// --- Tmux Session Switching ---
+// --- Tmux Session Switching via ForceRestart ---
 
-const MAC_STUDIO_HOST = "Mac-Studio";
-const REMOTE_HOST = "erikflowers@100.64.79.114";
+async function forceRestartWithAgent(blockId: string, agentName: string | null): Promise<void> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const tmux = "/opt/homebrew/bin/tmux";
 
-async function switchAgentSession(
-    blockId: string,
-    newAgentName: string,
-    previousAgentName: string | null
-): Promise<void> {
-    const sendInput = (data: string) => {
-        RpcApi.ControllerInputCommand(TabRpcClient, {
-            blockid: blockId,
-            inputdata64: stringToBase64(data),
-        });
-    };
+    // Set initscript: tmux attach for agents, null for bare shell
+    const initScript = agentName
+        ? `${tmux} attach -t ${agentName.toLowerCase()}\n`
+        : null;
 
-    // If previously attached to a tmux session, detach first
-    if (previousAgentName) {
-        sendInput("\x02d"); // Ctrl+B, d (tmux detach)
-        await new Promise((r) => setTimeout(r, 300));
-    }
+    await RpcApi.SetMetaCommand(TabRpcClient, {
+        oref: WOS.makeORef("block", blockId),
+        meta: { "cmd:initscript.zsh": initScript },
+    });
 
-    // Build attach command based on local vs remote
-    const sessionName = newAgentName.toLowerCase();
-    const hostname = getApi().getHostName();
-    const isLocal = hostname.startsWith(MAC_STUDIO_HOST);
-
-    let attachCmd: string;
-    if (isLocal) {
-        attachCmd = `tmux attach -t ${sessionName}`;
-    } else {
-        attachCmd = `ssh ${REMOTE_HOST} -t "tmux attach -t ${sessionName}"`;
-    }
-
-    sendInput(attachCmd + "\r");
+    await RpcApi.ControllerResyncCommand(TabRpcClient, {
+        tabid: tabId,
+        blockid: blockId,
+        forcerestart: true,
+    });
 }
 
 export {
     agentsAtom,
     AgentColorTable,
+    forceRestartWithAgent,
     getAgentColor,
     getAgentInfo,
     getAgentPrefs,
@@ -212,6 +197,5 @@ export {
     loadAvatarDataUrl,
     MATILDA_BASE,
     setAgentPref,
-    switchAgentSession,
 };
 export type { AgentInfo };

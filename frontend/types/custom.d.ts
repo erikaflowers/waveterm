@@ -135,6 +135,7 @@ declare global {
         readFileBase64: (filePath: string) => Promise<string | null>; // read-file-base64
         readTextFile: (filePath: string) => Promise<string | null>; // read-text-file
         writeTextFile: (filePath: string, content: string) => Promise<boolean>; // write-text-file
+        execCommand: (command: string) => Promise<{ stdout: string; stderr: string; code: number }>; // exec-command
     };
 
     type ElectronContextMenuItem = {
