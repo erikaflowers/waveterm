@@ -132,6 +132,7 @@ declare global {
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
         doRefresh: () => void; // do-refresh
         saveTextFile: (fileName: string, content: string) => Promise<boolean>; // save-text-file
+        readFileBase64: (filePath: string) => Promise<string | null>; // read-file-base64
     };
 
     type ElectronContextMenuItem = {
@@ -320,10 +321,16 @@ declare global {
         // Background styling metadata for the block.
         blockBg?: jotai.Atom<MetaType>;
 
+        // Current effective background color as hex string (for color picker).
+        currentBgColor?: jotai.Atom<string>;
+
         noHeader?: jotai.Atom<boolean>;
 
         // Whether the block manages its own connection (e.g., for remote access).
         manageConnection?: jotai.Atom<boolean>;
+
+        // Whether the block manages agent assignment.
+        manageAgent?: jotai.Atom<boolean>;
 
         // If true, filters out 'nowsh' connections (when managing connections)
         filterOutNowsh?: jotai.Atom<boolean>;

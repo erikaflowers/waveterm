@@ -48,4 +48,5 @@ export interface BlockFrameProps {
     numBlocksInTab?: number;
     children?: React.ReactNode;
     connBtnRef?: React.RefObject<HTMLDivElement>;
+    agentBtnRef?: React.RefObject<HTMLDivElement>;
 }

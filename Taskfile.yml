@@ -4,15 +4,15 @@
 version: "3"
 
 vars:
-    APP_NAME: "Wave"
+    APP_NAME: "Terminus"
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
     RMRF: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Get-Date -UFormat{{else}}date{{end}}'
-    ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
-    RELEASES_BUCKET: dl.waveterm.dev/releases-w2
-    WINGET_PACKAGE: CommandLine.Wave
+    ARTIFACTS_BUCKET: ""
+    RELEASES_BUCKET: ""
+    WINGET_PACKAGE: ""
 
 tasks:
     electron:dev:
@@ -438,11 +438,11 @@ tasks:
               vars:
                   GOOS: darwin
                   GOARCH: arm64
-            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/terminus-dev/bin/wsh
 
     dev:clearconfig:
         desc: Clear the config directory for waveterm-dev
-        cmd: "{{.RMRF}} ~/.config/waveterm-dev"
+        cmd: "{{.RMRF}} ~/.config/terminus-dev"
 
     dev:cleardata:
         desc: Clear the data directory for waveterm-dev
@@ -467,17 +467,17 @@ tasks:
     dev:cleardata:windows:
         internal: true
         platforms: [windows]
-        cmd: '{{.RMRF}} %LOCALAPPDATA%\waveterm-dev\Data'
+        cmd: '{{.RMRF}} %LOCALAPPDATA%\terminus-dev\Data'
 
     dev:cleardata:linux:
         internal: true
         platforms: [linux]
-        cmd: "rm -rf ~/.local/share/waveterm-dev"
+        cmd: "rm -rf ~/.local/share/terminus-dev"
 
     dev:cleardata:macos:
         internal: true
         platforms: [darwin]
-        cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
+        cmd: 'rm -rf ~/Library/Application\ Support/terminus-dev'
 
     npm:install:
         desc: Runs `npm install`

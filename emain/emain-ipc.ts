@@ -493,4 +493,23 @@ export function initIpcHandlers() {
             return false;
         }
     });
+
+    electron.ipcMain.handle("read-file-base64", async (_event, filePath: string) => {
+        try {
+            const data = await fs.promises.readFile(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const mimeMap: Record<string, string> = {
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+                ".svg": "image/svg+xml",
+            };
+            const mime = mimeMap[ext] ?? "application/octet-stream";
+            return `data:${mime};base64,${data.toString("base64")}`;
+        } catch {
+            return null;
+        }
+    });
 }

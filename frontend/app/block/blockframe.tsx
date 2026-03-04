@@ -5,6 +5,7 @@ import { BlockModel } from "@/app/block/block-model";
 import { BlockFrame_Header } from "@/app/block/blockframe-header";
 import { blockViewToIcon, getViewIconElem } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
+import { ChangeAgentBlockModal } from "@/app/modals/agenttypeahead";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
 import { atoms, getBlockComponentModel, getSettingsKeyAtom, globalStore, useBlockAtom, WOS } from "@/app/store/global";
 import { useTabModel } from "@/app/store/tab-model";
@@ -94,10 +95,15 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel?.blockBg);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
+    const manageAgent = util.useAtomValueSafe(viewModel?.manageAgent);
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
+    const changeAgentModalAtom = useBlockAtom(nodeModel.blockId, "changeAgent", () => {
+        return jotai.atom(false);
+    }) as jotai.PrimitiveAtom<boolean>;
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
+    const agentModalOpen = jotai.useAtomValue(changeAgentModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
@@ -105,6 +111,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
+    const agentBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
     React.useEffect(() => {
@@ -147,9 +154,16 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     if (!preview) {
         innerStyle = computeBgStyleFromMeta(customBg);
     }
+    const agentColor = blockData?.meta?.["agent:color"] as string;
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     const headerElem = (
-        <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
+        <BlockFrame_Header
+            {...props}
+            connBtnRef={connBtnRef}
+            agentBtnRef={agentBtnRef}
+            changeConnModalAtom={changeConnModalAtom}
+            changeAgentModalAtom={changeAgentModalAtom}
+        />
     );
     const headerElemNoView = React.cloneElement(headerElem, { viewModel: null });
     return (
@@ -170,6 +184,12 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 {
                     "--magnified-block-opacity": magnifiedBlockOpacity,
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
+                    ...(agentColor
+                        ? {
+                              "--agent-accent-color": agentColor,
+                              "--header-height": "50px",
+                          }
+                        : {}),
                 } as React.CSSProperties
             }
             inert={preview || undefined}
@@ -194,6 +214,15 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     blockRef={blockModel?.blockRef}
                     changeConnModalAtom={changeConnModalAtom}
                     connBtnRef={connBtnRef}
+                />
+            )}
+            {preview || viewModel == null || !agentModalOpen ? null : (
+                <ChangeAgentBlockModal
+                    blockId={nodeModel.blockId}
+                    nodeModel={nodeModel}
+                    blockRef={blockModel?.blockRef}
+                    changeAgentModalAtom={changeAgentModalAtom}
+                    agentBtnRef={agentBtnRef}
                 />
             )}
         </div>

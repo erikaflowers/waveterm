@@ -65,10 +65,28 @@ const waveConfigDir = getWaveConfigDir();
 
 electron.nativeTheme.themeSource = "dark";
 
+// Set dock icon explicitly for dev mode (macOS caches the Electron.app bundle icon)
+if (isDev && unamePlatform === "darwin") {
+    try {
+        // import.meta.dirname in dev points to waveterm/dist/main, so go up two levels to repo root
+        const { join } = require("path");
+        const iconPath = join(import.meta.dirname, "..", "..", "build", "icon.png");
+        console.log("dock icon path:", iconPath);
+        const img = electron.nativeImage.createFromPath(iconPath);
+        console.log("dock icon empty:", img.isEmpty(), "size:", img.getSize());
+        if (!img.isEmpty()) {
+            electronApp.dock.setIcon(img);
+            console.log("dock icon set");
+        }
+    } catch (e) {
+        console.log("dock icon error:", e);
+    }
+}
+
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s electron=%s",
+        "terminus starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s electron=%s",
         waveDataDir,
         waveConfigDir,
         getElectronAppBasePath(),
@@ -79,7 +97,7 @@ console.log(
     )
 );
 if (isDev) {
-    console.log("waveterm-app WAVETERM_DEV set");
+    console.log("terminus WAVETERM_DEV set");
 }
 
 function handleWSEvent(evtMsg: WSEventType) {
@@ -277,7 +295,7 @@ electronApp.on("before-quit", (e) => {
             type: "question",
             buttons: ["Cancel", "Quit"],
             title: "Confirm Quit",
-            message: "Are you sure you want to quit Wave Terminal?",
+            message: "Are you sure you want to quit Terminus?",
             defaultId: 0,
             cancelId: 0,
         });
@@ -379,7 +397,7 @@ async function appMain() {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
-        console.log("waveterm-app could not get single-instance-lock, shutting down");
+        console.log("terminus could not get single-instance-lock, shutting down");
         setUserConfirmedQuit(true);
         electronApp.quit();
         return;

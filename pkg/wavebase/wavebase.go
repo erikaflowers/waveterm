@@ -207,9 +207,9 @@ func EnsureWavePresetsDir() error {
 
 func resolveWaveCachesDir() string {
 	var cacheDir string
-	appBundle := "waveterm"
+	appBundle := "terminus"
 	if IsDevMode() {
-		appBundle = "waveterm-dev"
+		appBundle = "terminus-dev"
 	}
 
 	switch runtime.GOOS {
@@ -438,7 +438,7 @@ func getSystemSummary(ctx context.Context) string {
 
 // job socket path on remote machine
 func GetRemoteJobSocketPath(jobId string) string {
-	socketDir := filepath.Join("/tmp", fmt.Sprintf("waveterm-%d", os.Getuid()))
+	socketDir := filepath.Join("/tmp", fmt.Sprintf("terminus-%d", os.Getuid()))
 	return filepath.Join(socketDir, fmt.Sprintf("%s.sock", jobId))
 }
 

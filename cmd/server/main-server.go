@@ -455,7 +455,7 @@ func maybeStartPprofServer() {
 
 func main() {
 	log.SetFlags(0) // disable timestamp since electron's winston logger already wraps with timestamp
-	log.SetPrefix("[wavesrv] ")
+	log.SetPrefix("[terminus-srv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 	wshutil.DefaultRouter = wshutil.NewWshRouter()
@@ -509,9 +509,9 @@ func main() {
 			log.Printf("error releasing wave lock: %v\n", err)
 		}
 	}()
-	log.Printf("wave version: %s (%s)\n", WaveVersion, BuildTime)
-	log.Printf("wave data dir: %s\n", wavebase.GetWaveDataDir())
-	log.Printf("wave config dir: %s\n", wavebase.GetWaveConfigDir())
+	log.Printf("terminus version: %s (%s)\n", WaveVersion, BuildTime)
+	log.Printf("terminus data dir: %s\n", wavebase.GetWaveDataDir())
+	log.Printf("terminus config dir: %s\n", wavebase.GetWaveConfigDir())
 	err = filestore.InitFilestore()
 	if err != nil {
 		log.Printf("error initializing filestore: %v\n", err)

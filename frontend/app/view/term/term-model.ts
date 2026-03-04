@@ -56,7 +56,9 @@ export class TermViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
+    currentBgColor: jotai.Atom<string>;
     manageConnection: jotai.Atom<boolean>;
+    manageAgent: jotai.Atom<boolean>;
     filterOutNowsh?: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
     useTermHeader: jotai.Atom<boolean>;
@@ -222,6 +224,17 @@ export class TermViewModel implements ViewModel {
             }
             return true;
         });
+        this.manageAgent = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return false;
+            }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
+                return false;
+            }
+            return true;
+        });
         this.useTermHeader = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
@@ -247,6 +260,11 @@ export class TermViewModel implements ViewModel {
             });
         });
         this.blockBg = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const bgOverride = blockData?.meta?.["term:bgcolor"] as string;
+            if (bgOverride) {
+                return { bg: bgOverride };
+            }
             const fullConfig = get(atoms.fullConfigAtom);
             const themeName = get(this.termThemeNameAtom);
             const termTransparency = get(this.termTransparencyAtom);
@@ -255,6 +273,16 @@ export class TermViewModel implements ViewModel {
                 return { bg: bgcolor };
             }
             return null;
+        });
+        this.currentBgColor = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            const bgOverride = blockData?.meta?.["term:bgcolor"] as string;
+            if (bgOverride) return bgOverride;
+            const fullConfig = get(atoms.fullConfigAtom);
+            const themeName = get(this.termThemeNameAtom);
+            const termTransparency = get(this.termTransparencyAtom);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency);
+            return bgcolor ?? "#000000";
         });
         this.connStatus = jotai.atom((get) => {
             const blockData = get(this.blockAtom);

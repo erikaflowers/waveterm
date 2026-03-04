@@ -71,6 +71,7 @@ contextBridge.exposeInMainWorld("api", {
     setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
     doRefresh: () => ipcRenderer.send("do-refresh"),
     saveTextFile: (fileName: string, content: string) => ipcRenderer.invoke("save-text-file", fileName, content),
+    readFileBase64: (filePath: string) => ipcRenderer.invoke("read-file-base64", filePath),
 });
 
 // Custom event for "new-window"

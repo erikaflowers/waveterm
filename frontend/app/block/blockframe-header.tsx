@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { AgentButton } from "@/app/block/agentbutton";
 import {
     blockViewToIcon,
     blockViewToName,
@@ -8,6 +9,7 @@ import {
     OptMagnifyButton,
     renderHeaderElements,
 } from "@/app/block/blockutil";
+import { ColorPickerPopover } from "@/app/block/colorpicker";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
@@ -167,9 +169,15 @@ const BlockFrame_Header = ({
     viewModel,
     preview,
     connBtnRef,
+    agentBtnRef,
     changeConnModalAtom,
+    changeAgentModalAtom,
     error,
-}: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
+}: BlockFrameProps & {
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
+    changeAgentModalAtom?: jotai.PrimitiveAtom<boolean>;
+    error?: Error;
+}) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
@@ -180,6 +188,8 @@ const BlockFrame_Header = ({
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
+    const manageAgent = util.useAtomValueSafe(viewModel?.manageAgent);
+    const currentBgColor = util.useAtomValueSafe(viewModel?.currentBgColor);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const isTerminalBlock = blockData?.meta?.view === "term";
     viewName = blockData?.meta?.["frame:title"] ?? viewName;
@@ -194,6 +204,24 @@ const BlockFrame_Header = ({
     }, [magnified]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+    const agentAccentColor = blockData?.meta?.["agent:color"] as string;
+
+    const handleBgColorChange = React.useCallback(
+        async (hex: string) => {
+            await RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", nodeModel.blockId),
+                meta: { "term:bgcolor": hex },
+            });
+        },
+        [nodeModel.blockId]
+    );
+
+    const handleBgColorReset = React.useCallback(async () => {
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", nodeModel.blockId),
+            meta: { "term:bgcolor": null },
+        });
+    }, [nodeModel.blockId]);
 
     return (
         <div
@@ -201,6 +229,7 @@ const BlockFrame_Header = ({
             data-role="block-header"
             ref={dragHandleRef}
             onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel)}
+            style={agentAccentColor ? { borderTop: `2px solid ${agentAccentColor}` } : undefined}
         >
             {!useTermHeader && (
                 <>
@@ -210,6 +239,21 @@ const BlockFrame_Header = ({
                         {viewName && !hideViewName && <div className="block-frame-view-type">{viewName}</div>}
                     </div>
                 </>
+            )}
+            {manageAgent && changeAgentModalAtom && (
+                <AgentButton
+                    ref={agentBtnRef}
+                    key="agentbutton"
+                    agentName={blockData?.meta?.["agent:name"] as string}
+                    changeAgentModalAtom={changeAgentModalAtom}
+                />
+            )}
+            {isTerminalBlock && currentBgColor && (
+                <ColorPickerPopover
+                    currentColor={currentBgColor}
+                    onColorChange={handleBgColorChange}
+                    onReset={handleBgColorReset}
+                />
             )}
             {manageConnection && (
                 <ConnectionButton
