@@ -104,7 +104,35 @@ task dev    # Launch in dev mode
 
 Terminus is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm), an open-source AI-integrated terminal for macOS, Linux, and Windows. All upstream features — SSH sessions, AI chat, file preview, drag-and-drop blocks, `wsh` CLI — are preserved. See the [Wave documentation](https://docs.waveterm.dev) for those features.
 
-Forked at Wave v0.14.1-beta.0 (`e8d6ff5b`, Feb 28, 2026).
+Forked at Wave v0.14.1-beta.0 (`e8d6ff5b`, Feb 28, 2026). Last synced: v0.14.1 (`5c6ee3a1`, Mar 5, 2026).
+
+### Upstream Sync Check
+
+Run this weekly (or before starting new feature work) to see how far behind we are:
+
+```bash
+cd ~/claude\ projects/waveterm
+git fetch upstream && git rev-list HEAD..upstream/main --count
+```
+
+If the count is non-zero, check what changed:
+
+```bash
+git log --oneline HEAD..upstream/main
+git diff --name-only HEAD..upstream/main
+```
+
+**Watch files** — these are the only shared files where our changes overlap with Wave's core logic. If upstream touches any of these, review manually before merging:
+
+- `frontend/app/block/blockframe-header.tsx` — agent button + color picker in header JSX
+- `frontend/app/block/blockframe.tsx` — agent modal + CSS variables
+- `frontend/app/view/term/term-model.ts` — `blockBg` atom modified for agent bgcolor
+
+If none of the watch files are touched, merge is safe:
+
+```bash
+git merge upstream/main
+```
 
 ---
 
