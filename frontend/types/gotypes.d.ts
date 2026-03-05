@@ -25,6 +25,7 @@ declare global {
         "ai:thinkinglevel"?: string;
         "ai:verbosity"?: string;
         "ai:endpoint"?: string;
+        "ai:proxyurl"?: string;
         "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
@@ -1119,6 +1120,7 @@ declare global {
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:bgcolor"?: string;
+        "term:osc52"?: string;
         "term:durable"?: boolean;
         "agent:name"?: string;
         "agent:color"?: string;
@@ -1317,6 +1319,7 @@ declare global {
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:bgcolor"?: string;
+        "term:osc52"?: string;
         "term:durable"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
@@ -1446,6 +1449,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "client:packagetype"?: string;
+        "client:macos"?: string;
         "cohort:month"?: string;
         "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;
@@ -1488,6 +1493,7 @@ declare global {
         "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
+        "onboarding:page"?: string;
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;
@@ -1543,6 +1549,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "client:packagetype"?: string;
+        "client:macos"?: string;
         "cohort:month"?: string;
         "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;

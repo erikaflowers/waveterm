@@ -108,6 +108,14 @@ Forked at Wave v0.14.1-beta.0 (`e8d6ff5b`, Feb 28, 2026).
 
 ---
 
+### Sponsoring Wave ❤️
+
+If Wave Terminal is useful to you or your company, consider sponsoring development.
+
+Sponsorship helps support the time spent building and maintaining the project.
+
+- https://github.com/sponsors/wavetermdev
+
 ## License
 
 Terminus is licensed under the Apache-2.0 License, same as upstream Wave Terminal. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for dependency information.

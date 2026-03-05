@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld("api", {
     readTextFile: (filePath: string) => ipcRenderer.invoke("read-text-file", filePath),
     writeTextFile: (filePath: string, content: string) => ipcRenderer.invoke("write-text-file", filePath, content),
     execCommand: (command: string) => ipcRenderer.invoke("exec-command", command),
+    setIsActive: () => ipcRenderer.invoke("set-is-active"),
 });
 
 // Custom event for "new-window"
