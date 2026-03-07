@@ -8,6 +8,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
+import { SettingsVisualContent } from "@/app/view/waveconfig/settingsvisual";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
@@ -67,6 +68,13 @@ function validateWaveAiJson(parsed: any): ValidationResult {
 }
 
 const configFiles: ConfigFile[] = [
+    {
+        name: "User Preferences",
+        path: "settings.json",
+        language: "json",
+        hasJsonView: true,
+        visualComponent: SettingsVisualContent,
+    },
     {
         name: "General",
         path: "settings.json",

@@ -17,6 +17,16 @@ const tileGapSizeAtom = atom((get) => {
     return settings["window:tilegapsize"];
 });
 
+const activeBorderWidthAtom = atom((get) => {
+    const settings = get(atoms.settingsAtom);
+    return settings["window:activeborderwidth"] ?? 4;
+});
+
+const activeBorderColorAtom = atom((get) => {
+    const settings = get(atoms.settingsAtom);
+    return settings["window:activebordercolor"] ?? "fuchsia";
+});
+
 const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
     const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom(oref), [oref]);
@@ -24,6 +34,8 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const tabAtom = useMemo(() => WOS.getWaveObjectAtom<Tab>(oref), [oref]);
     const tabData = useAtomValue(tabAtom);
     const tileGapSize = useAtomValue(tileGapSizeAtom);
+    const activeBorderWidth = useAtomValue(activeBorderWidthAtom);
+    const activeBorderColor = useAtomValue(activeBorderColorAtom);
 
     const tileLayoutContents = useMemo(() => {
         const renderContent: ContentRenderer = (nodeModel: NodeModel) => {
@@ -67,7 +79,15 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     }
 
     return (
-        <div className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]">
+        <div
+            className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]"
+            style={
+                {
+                    "--active-border-width": `${activeBorderWidth}px`,
+                    "--active-border-color": activeBorderColor,
+                } as React.CSSProperties
+            }
+        >
             {innerContent}
         </div>
     );

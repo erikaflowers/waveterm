@@ -403,9 +403,9 @@
             left: 0;
             right: 0;
             bottom: 0;
-            border: 2px solid transparent;
+            border: var(--active-border-width, 4px) solid transparent;
             pointer-events: none;
-            padding: 2px;
+            padding: 0px;
             border-radius: var(--block-border-radius);
             z-index: var(--zindex-block-mask-inner);
 
@@ -434,13 +434,13 @@
 
         &.block-focused {
             .block-mask {
-                border: 2px solid var(--accent-color);
+                border: var(--active-border-width, 4px) solid var(--active-border-color, fuchsia);
             }
 
             &.block-no-highlight,
             &.block-preview {
                 .block-mask {
-                    border: 2px solid rgb(from var(--border-color) r g b / 10%) !important;
+                    border: var(--active-border-width, 4px) solid rgb(from var(--border-color) r g b / 10%) !important;
                 }
             }
         }

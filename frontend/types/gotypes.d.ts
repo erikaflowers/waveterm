@@ -1119,12 +1119,8 @@ declare global {
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
-        "term:bgcolor"?: string;
         "term:osc52"?: string;
         "term:durable"?: boolean;
-        "agent:name"?: string;
-        "agent:color"?: string;
-        "agent:role"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1318,7 +1314,6 @@ declare global {
         "term:cursorblink"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
-        "term:bgcolor"?: string;
         "term:osc52"?: string;
         "term:durable"?: boolean;
         "editor:minimapenabled"?: boolean;
@@ -1362,6 +1357,8 @@ declare global {
         "window:savelastwindow"?: boolean;
         "window:dimensions"?: string;
         "window:zoom"?: number;
+        "window:activeborderwidth"?: number;
+        "window:activebordercolor"?: string;
         "telemetry:*"?: boolean;
         "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;

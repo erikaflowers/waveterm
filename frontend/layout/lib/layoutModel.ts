@@ -68,7 +68,7 @@ interface ResizeContext {
     afterNodeStartSize: number;
 }
 
-const DefaultGapSizePx = 3;
+const DefaultGapSizePx = 16;
 const MinNodeSizePx = 40;
 const DefaultAnimationTimeS = 0.15;
 
@@ -420,6 +420,12 @@ export class LayoutModel {
                 layoutBlockIds.add(node.data.blockId);
             }
         });
+
+        // Ephemeral nodes live outside the tree — don't treat them as orphaned
+        const ephemeral = this.getter(this.ephemeralNode);
+        if (ephemeral?.data?.blockId) {
+            layoutBlockIds.add(ephemeral.data.blockId);
+        }
 
         for (const blockId of tab.blockids || []) {
             if (!layoutBlockIds.has(blockId)) {
