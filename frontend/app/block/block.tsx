@@ -14,7 +14,10 @@ import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { CrewViewModel } from "@/app/view/crew/crew";
 import { DevServersViewModel } from "@/app/view/devservers/devservers";
+import { GitDashViewModel } from "@/app/view/gitdash/gitdash";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
+import { FleetLogViewModel } from "@/app/view/fleetlog/fleetlog";
+import { UsageViewModel } from "@/app/view/usage/usage";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -62,6 +65,9 @@ BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 BlockRegistry.set("crew", CrewViewModel);
 BlockRegistry.set("devservers", DevServersViewModel);
+BlockRegistry.set("gitdash", GitDashViewModel);
+BlockRegistry.set("usage", UsageViewModel);
+BlockRegistry.set("fleetlog", FleetLogViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

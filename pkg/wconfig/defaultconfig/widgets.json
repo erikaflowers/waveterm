@@ -70,5 +70,35 @@
                 "view": "devservers"
             }
         }
+    },
+    "defwidget@gitdash": {
+        "display:order": 2,
+        "icon": "code-branch",
+        "label": "git",
+        "blockdef": {
+            "meta": {
+                "view": "gitdash"
+            }
+        }
+    },
+    "defwidget@usage": {
+        "display:order": 3,
+        "icon": "gauge",
+        "label": "usage",
+        "blockdef": {
+            "meta": {
+                "view": "usage"
+            }
+        }
+    },
+    "defwidget@fleetlog": {
+        "display:order": 4,
+        "icon": "satellite-dish",
+        "label": "fleet",
+        "blockdef": {
+            "meta": {
+                "view": "fleetlog"
+            }
+        }
     }
 }
