@@ -284,6 +284,12 @@
         "window:zoom": {
           "type": "number"
         },
+        "window:activeborderwidth": {
+          "type": "integer"
+        },
+        "window:activebordercolor": {
+          "type": "string"
+        },
         "telemetry:*": {
           "type": "boolean"
         },

@@ -24,7 +24,9 @@ import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-p
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
-import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
+import { startOAuthLogin, readAuthState, writeAuthState, clearAuthState, pullConfigs, pushConfigs, getDevices } from "./emain-oauth";
+import { getWaveConfigDir } from "./emain-platform";
+import { createNewWaveWindow, focusedWaveWindow, getClientId, getWaveWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -545,5 +547,96 @@ export function initIpcHandlers() {
                 });
             });
         });
+    });
+
+    // ── Terminus Cloud Sync ────────────────────────────────
+
+    electron.ipcMain.handle("terminus-auth-login", async () => {
+        try {
+            const authState = await startOAuthLogin();
+            return { ok: true, email: authState.email, name: authState.name, picture: authState.picture };
+        } catch (e) {
+            return { ok: false, error: (e as Error).message };
+        }
+    });
+
+    electron.ipcMain.handle("terminus-auth-logout", async () => {
+        clearAuthState();
+        return { ok: true };
+    });
+
+    electron.ipcMain.handle("terminus-auth-status", async () => {
+        const auth = readAuthState();
+        if (!auth) {
+            return { loggedIn: false };
+        }
+        return {
+            loggedIn: true,
+            email: auth.email,
+            name: auth.name,
+            picture: auth.picture,
+            syncEnabled: auth.sync_enabled,
+            tokenExpiry: auth.token_expiry,
+        };
+    });
+
+    electron.ipcMain.handle("terminus-sync-pull", async () => {
+        const auth = readAuthState();
+        if (!auth) {
+            return { ok: false, error: "Not logged in" };
+        }
+        try {
+            const machineId = await getClientId();
+            const result = await pullConfigs(auth, machineId);
+            // Write pulled configs to disk so the filewatcher picks them up
+            if (result.configs) {
+                const configDir = getWaveConfigDir();
+                for (const [key, data] of Object.entries(result.configs)) {
+                    if (!data || typeof data !== "object") continue;
+                    const filePath = path.join(configDir, `${key}.json`);
+                    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+                }
+            }
+            return { ok: true, ...result };
+        } catch (e) {
+            return { ok: false, error: (e as Error).message };
+        }
+    });
+
+    electron.ipcMain.handle("terminus-sync-push", async (_event, configs: Record<string, any>) => {
+        const auth = readAuthState();
+        if (!auth) {
+            return { ok: false, error: "Not logged in" };
+        }
+        try {
+            const machineId = await getClientId();
+            const result = await pushConfigs(auth, machineId, configs);
+            return { ok: true, ...result };
+        } catch (e) {
+            return { ok: false, error: (e as Error).message };
+        }
+    });
+
+    electron.ipcMain.handle("terminus-devices", async () => {
+        const auth = readAuthState();
+        if (!auth) {
+            return { ok: false, error: "Not logged in" };
+        }
+        try {
+            const result = await getDevices(auth);
+            return { ok: true, ...result };
+        } catch (e) {
+            return { ok: false, error: (e as Error).message };
+        }
+    });
+
+    electron.ipcMain.handle("terminus-sync-toggle", async (_event, enabled: boolean) => {
+        const auth = readAuthState();
+        if (!auth) {
+            return { ok: false, error: "Not logged in" };
+        }
+        auth.sync_enabled = enabled;
+        writeAuthState(auth);
+        return { ok: true, syncEnabled: enabled };
     });
 }

@@ -36,7 +36,7 @@ const AgentColorTable: Record<string, { color: string; role: string }> = {
     kogan: { color: "#D946EF", role: "Security" },
     reed: { color: "#0EA5E9", role: "Intelligence" },
     renic: { color: "#78716C", role: "DevOps" },
-    art: { color: "#FBBF24", role: "Art Direction" },
+    samantha: { color: "#FF00FF", role: "Systems Auteur" },
 };
 
 // Crew themes defined in ~/.config/terminus-dev/termthemes.json
@@ -56,7 +56,7 @@ function getDefaultTheme(name: string): string {
 
 function getAvatarPath(name: string): string {
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-    return `${MATILDA_BASE}/agent-art/${capitalized}.jpg`;
+    return `${MATILDA_BASE}/portraits/${capitalized}.jpg`;
 }
 
 function buildStaticAgentList(): AgentInfo[] {
@@ -169,8 +169,10 @@ async function forceRestartWithAgent(blockId: string, agentName: string | null):
     const tabId = globalStore.get(atoms.staticTabId);
     const tmux = "/opt/homebrew/bin/tmux";
 
-    // Set initscript: tmux attach for agents, null for bare shell
-    const initScript = agentName
+    // Operator (Samantha) gets a bare shell, agents get tmux attach
+    const info = agentName ? getAgentInfo(agentName) : null;
+    const isOperator = info?.role === "Systems Auteur";
+    const initScript = agentName && !isOperator
         ? `${tmux} attach -t ${agentName.toLowerCase()}\n`
         : null;
 

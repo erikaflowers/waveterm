@@ -3,6 +3,8 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
+import * as fs from "fs";
+import * as path from "path";
 import { focusedBuilderWindow, getAllBuilderWindows } from "emain/emain-builder";
 import { globalEvents } from "emain/emain-events";
 import { sprintf } from "sprintf-js";
@@ -46,6 +48,7 @@ import {
     createNewWaveWindow,
     focusedWaveWindow,
     getAllWaveWindows,
+    getClientId,
     getWaveWindowById,
     getWaveWindowByWorkspaceId,
     registerGlobalHotkey,
@@ -53,6 +56,7 @@ import {
     WaveBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
+import { readAuthState, pullConfigs } from "./emain-oauth";
 import { getLaunchSettings } from "./launchsettings";
 import { configureAutoUpdater, updater } from "./updater";
 
@@ -438,6 +442,26 @@ async function appMain() {
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }
+
+    // Cloud sync: pull configs on startup if logged in
+    fireAndForget(async () => {
+        const auth = readAuthState();
+        if (!auth?.sync_enabled) return;
+        try {
+            const machineId = await getClientId();
+            const result = await pullConfigs(auth, machineId);
+            if (result.configs) {
+                for (const [key, data] of Object.entries(result.configs)) {
+                    if (!data || typeof data !== "object") continue;
+                    const filePath = path.join(waveConfigDir, `${key}.json`);
+                    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+                }
+                console.log("cloud sync: pulled configs on startup");
+            }
+        } catch (e) {
+            console.log("cloud sync: pull on startup failed", e);
+        }
+    });
 
     electronApp.on("activate", () => {
         const allWindows = getAllWaveWindows();

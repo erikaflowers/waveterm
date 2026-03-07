@@ -45,20 +45,21 @@ interface TabBarProps {
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
-    const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
+    const showAiButton = useAtomValue(getSettingsKeyAtom("app:showaibutton"));
 
     const onClick = () => {
         const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
     };
 
-    if (hideAiButton) {
+    // Terminus: AI button hidden by default, opt-in via "app:showaibutton": true
+    if (!showAiButton) {
         return null;
     }
 
     return (
         <Tooltip
-            content="Toggle Wave AI Panel"
+            content="Toggle AI Panel"
             placement="bottom"
             hideOnClick
             divClassName={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}

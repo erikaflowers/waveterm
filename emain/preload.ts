@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld("api", {
     writeTextFile: (filePath: string, content: string) => ipcRenderer.invoke("write-text-file", filePath, content),
     execCommand: (command: string) => ipcRenderer.invoke("exec-command", command),
     setIsActive: () => ipcRenderer.invoke("set-is-active"),
+
+    // Terminus Cloud Sync
+    terminusAuthLogin: () => ipcRenderer.invoke("terminus-auth-login"),
+    terminusAuthLogout: () => ipcRenderer.invoke("terminus-auth-logout"),
+    terminusAuthStatus: () => ipcRenderer.invoke("terminus-auth-status"),
+    terminusSyncPull: () => ipcRenderer.invoke("terminus-sync-pull"),
+    terminusSyncPush: (configs: Record<string, any>) => ipcRenderer.invoke("terminus-sync-push", configs),
+    terminusDevices: () => ipcRenderer.invoke("terminus-devices"),
+    terminusSyncToggle: (enabled: boolean) => ipcRenderer.invoke("terminus-sync-toggle", enabled),
 });
 
 // Custom event for "new-window"

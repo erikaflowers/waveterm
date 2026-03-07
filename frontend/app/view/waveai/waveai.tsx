@@ -103,7 +103,7 @@ export class WaveAiModel implements ViewModel {
         this.viewType = "waveai";
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
-        this.viewName = atom("Wave AI");
+        this.viewName = atom("AI");
         this.messagesAtom = atom([]);
         this.messagesSplitAtom = splitAtom(this.messagesAtom);
         this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);

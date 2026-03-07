@@ -149,7 +149,7 @@ async function initWave(initOpts: WaveInitOpts) {
         environment: "renderer",
         primaryTabStartup: initOpts.primaryTabStartup,
     };
-    console.log("Wave Init", globalInitOpts);
+    console.log("Terminus Init", globalInitOpts);
     globalStore.set(activeTabIdAtom, initOpts.tabId);
     await GlobalModel.getInstance().initialize(globalInitOpts);
     initGlobal(globalInitOpts);
@@ -177,7 +177,7 @@ async function initWave(initOpts: WaveInitOpts) {
         ]);
         loadAllWorkspaceTabs(ws);
         WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
-        document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+        document.title = `Terminus - ${initialTab.name}`;
     } catch (e) {
         console.error("Failed initialization error", e);
         getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);
@@ -191,7 +191,7 @@ async function initWave(initOpts: WaveInitOpts) {
     globalStore.set(atoms.fullConfigAtom, fullConfig);
     const waveaiModeConfig = await RpcApi.GetWaveAIModeConfigCommand(TabRpcClient);
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
-    console.log("Wave First Render");
+    console.log("Terminus First Render");
     let firstRenderResolveFn: () => void = null;
     let firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
@@ -201,7 +201,7 @@ async function initWave(initOpts: WaveInitOpts) {
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
-    console.log("Wave First Render Done");
+    console.log("Terminus First Render Done");
     getApi().setWindowInitStatus("wave-ready");
 }
 

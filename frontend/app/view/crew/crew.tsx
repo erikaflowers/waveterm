@@ -100,12 +100,12 @@ const AgentCard = React.memo(
         agent,
         onAttach,
         onLaunch,
-        onKill,
+        onSleep,
     }: {
         agent: CrewAgent;
         onAttach: (name: string) => void;
         onLaunch: (name: string) => void;
-        onKill: (name: string) => void;
+        onSleep: (name: string) => void;
     }) => {
         const isRunning = agent.session != null;
         const color = agent.info?.color ?? "#666";
@@ -170,7 +170,7 @@ const AgentCard = React.memo(
                                 Attach
                             </button>
                             <button
-                                onClick={() => onKill(agent.key)}
+                                onClick={() => onSleep(agent.key)}
                                 className="px-2 py-1 text-[11px] rounded"
                                 style={{
                                     background: "rgba(255,0,0,0.1)",
@@ -179,7 +179,7 @@ const AgentCard = React.memo(
                                     cursor: "pointer",
                                 }}
                             >
-                                Kill
+                                Sleep
                             </button>
                         </>
                     ) : (
@@ -270,6 +270,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
             const agentName = info?.name ?? agentKey;
             const sessionName = agentKey.toLowerCase();
             const tmux = "/opt/homebrew/bin/tmux";
+            const isOperator = info?.role === "Systems Auteur";
             const blockDef: BlockDef = {
                 meta: {
                     view: "term",
@@ -278,7 +279,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                     "agent:color": info?.color ?? null,
                     "agent:role": info?.role ?? null,
                     "term:theme": info?.defaultTheme ?? null,
-                    "cmd:initscript.zsh": `${tmux} attach -t ${sessionName}\n`,
+                    ...(isOperator ? {} : { "cmd:initscript.zsh": `${tmux} attach -t ${sessionName}\n` }),
                 },
             };
             await createBlock(blockDef);
@@ -294,7 +295,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         [refreshSessions]
     );
 
-    const handleKill = React.useCallback(
+    const handleSleep = React.useCallback(
         async (agentKey: string) => {
             await getApi().execCommand(`/opt/homebrew/bin/tmux kill-session -t ${agentKey}`);
             await refreshSessions();
@@ -310,7 +311,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         await refreshSessions();
     }, [agents, refreshSessions]);
 
-    const handleKillAll = React.useCallback(async () => {
+    const handleSleepAll = React.useCallback(async () => {
         const running = agents.filter((a) => a.session);
         for (const agent of running) {
             await getApi().execCommand(`/opt/homebrew/bin/tmux kill-session -t ${agent.key}`);
@@ -368,7 +369,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                                 agent={agent}
                                 onAttach={handleAttach}
                                 onLaunch={handleLaunch}
-                                onKill={handleKill}
+                                onSleep={handleSleep}
                             />
                         ))}
                     </div>
@@ -387,7 +388,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                                 agent={agent}
                                 onAttach={handleAttach}
                                 onLaunch={handleLaunch}
-                                onKill={handleKill}
+                                onSleep={handleSleep}
                             />
                         ))}
                     </div>
@@ -407,7 +408,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                     Launch All
                 </button>
                 <button
-                    onClick={handleKillAll}
+                    onClick={handleSleepAll}
                     className="flex-1 px-2 py-1.5 text-[11px] rounded"
                     style={{
                         background: "rgba(255,0,0,0.08)",
@@ -416,7 +417,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                         cursor: "pointer",
                     }}
                 >
-                    Kill All
+                    Sleep All
                 </button>
             </div>
         </div>

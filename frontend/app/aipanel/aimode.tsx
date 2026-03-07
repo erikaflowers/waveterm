@@ -120,7 +120,7 @@ function computeWaveCloudSections(
 
     if (waveProviderConfigs.length > 0) {
         sections.push({
-            sectionName: "Wave AI Cloud",
+            sectionName: "AI Cloud",
             configs: waveProviderConfigs,
             noTelemetry: !telemetryEnabled,
         });

@@ -107,6 +107,8 @@ const (
 	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
 	ConfigKey_WindowDimensions               = "window:dimensions"
 	ConfigKey_WindowZoom                     = "window:zoom"
+	ConfigKey_WindowActiveBorderWidth        = "window:activeborderwidth"
+	ConfigKey_WindowActiveBorderColor        = "window:activebordercolor"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

@@ -60,6 +60,41 @@ function initGlobal(initOpts: GlobalInitOptions) {
     }
 }
 
+// Cloud sync: debounced push on config change
+let cloudSyncTimer: ReturnType<typeof setTimeout> | null = null;
+const CLOUD_SYNC_DEBOUNCE_MS = 5000;
+
+function debouncedCloudSyncPush() {
+    if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+    cloudSyncTimer = setTimeout(() => {
+        cloudSyncTimer = null;
+        fireAndForget(async () => {
+            try {
+                const status = await getApi().terminusAuthStatus();
+                if (!status.loggedIn || !status.syncEnabled) return;
+                // Read all synced config files and push
+                const configDir = getApi().getConfigDir();
+                const syncKeys = ["settings", "connections", "widgets", "agents"];
+                const configs: Record<string, any> = {};
+                for (const key of syncKeys) {
+                    try {
+                        const raw = await getApi().readTextFile(configDir + "/" + key + ".json");
+                        if (raw) configs[key] = JSON.parse(raw);
+                    } catch {
+                        // file doesn't exist or isn't valid JSON, skip
+                    }
+                }
+                if (Object.keys(configs).length > 0) {
+                    await getApi().terminusSyncPush(configs);
+                    console.log("cloud sync: pushed configs after change");
+                }
+            } catch (e) {
+                console.log("cloud sync: push failed", e);
+            }
+        });
+    }, CLOUD_SYNC_DEBOUNCE_MS);
+}
+
 function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
     waveEventSubscribeSingle({
         eventType: "waveobj:update",
@@ -73,6 +108,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         handler: (event) => {
             // console.log("config wave event handler", event);
             globalStore.set(atoms.fullConfigAtom, event.data.fullconfig);
+            debouncedCloudSyncPush();
         },
     });
     waveEventSubscribeSingle({

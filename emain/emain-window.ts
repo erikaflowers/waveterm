@@ -104,7 +104,7 @@ export let focusedWaveWindow: WaveBrowserWindow = null;
 let cachedClientId: string = null;
 let hasCompletedFirstRelaunch = false;
 
-async function getClientId() {
+export async function getClientId() {
     if (cachedClientId != null) {
         return cachedClientId;
     }
@@ -180,7 +180,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 symbolColor: "white",
                 color: "#00000000",
             };
-            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png");
+            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/terminus-logo.png");
             winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
             if (isTransparent) {
                 winOpts.transparent = true;
