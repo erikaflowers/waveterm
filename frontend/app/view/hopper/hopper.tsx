@@ -69,6 +69,7 @@ type InboxMessage = {
     to?: string;
     msg?: string;
     signal?: string; // "relay" = fire next queued prompt
+    payload?: string; // contextual data from previous agent, injected into next queued prompt
     ts: string;
 };
 
@@ -84,15 +85,25 @@ type QueuedPrompt = {
     text: string;
     createdAt: string;
     status: "waiting" | "sent";
+    expectsPayload?: boolean; // if true, next relay should include a payload
 };
 
 // --- Relay Instruction ---
 
-function buildRelayInstruction(fromAgent: string): string {
+function buildRelayInstruction(fromAgent: string, nextExpectsPayload: boolean): string {
+    if (nextExpectsPayload) {
+        return (
+            `\n\nOne more thing — after you finish, I need you to notify the Hopper so the next agent can pick up where you left off. ` +
+            `Replace PAYLOAD_HERE with a short summary of what you found or built (endpoints, field names, whatever is relevant). ` +
+            `Escape any single quotes with '\\''.\n\n` +
+            `echo '{"from":"${fromAgent}","signal":"relay","payload":"PAYLOAD_HERE","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.claude/hooks/hopper-inbox.jsonl\n\n` +
+            `This is part of our relay workflow — Samantha set it up so agents can hand off work to each other through the Hopper.`
+        );
+    }
     return (
-        `\n\n---\nIMPORTANT: When you have fully completed the task above, signal completion by running this exact bash command:\n` +
-        `echo '{"from":"${fromAgent}","signal":"relay","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.claude/hooks/hopper-inbox.jsonl\n` +
-        `This tells the Hopper to dispatch the next queued prompt. Do NOT skip this step.`
+        `\n\nOne more thing — after you finish, notify the Hopper so the next agent in the chain can start. Run this:\n\n` +
+        `echo '{"from":"${fromAgent}","signal":"relay","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.claude/hooks/hopper-inbox.jsonl\n\n` +
+        `This is part of our relay workflow — Samantha set it up so agents can hand off work to each other through the Hopper.`
     );
 }
 
@@ -626,6 +637,19 @@ const QueueEntry = React.memo(
                         <span className="text-[9px]" style={{ color: isWaiting ? QUEUE_COLOR : "#22c55e" }}>
                             {isWaiting ? "awaiting relay" : "sent"}
                         </span>
+                        {queued.expectsPayload && (
+                            <span
+                                className="text-[8px] font-bold uppercase px-1 py-0.5 rounded"
+                                style={{
+                                    background: "rgba(251,191,36,0.15)",
+                                    color: "#fbbf24",
+                                    border: "1px solid rgba(251,191,36,0.3)",
+                                }}
+                                title="This prompt expects a payload from the previous agent"
+                            >
+                                payload
+                            </span>
+                        )}
                     </div>
                     <span className="text-[11px]" style={{ color: "var(--main-text-color)", lineHeight: 1.3 }}>
                         {preview}
@@ -684,6 +708,7 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
     // Queue state (relay chain)
     const [queue, setQueue] = React.useState<QueuedPrompt[]>([]);
     const [queueOpen, setQueueOpen] = React.useState(true);
+    const [queuePayloadMode, setQueuePayloadMode] = React.useState(false);
 
     // Ref for queue to use in interval callback without stale closure
     const queueRef = React.useRef<QueuedPrompt[]>([]);
@@ -714,16 +739,27 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
     // --- Fire a queued prompt ---
 
     const fireQueuedPrompt = React.useCallback(
-        async (qp: QueuedPrompt) => {
+        async (qp: QueuedPrompt, payload?: string) => {
+            // Inject payload into prompt if present
+            let promptText = qp.text;
+            if (payload && qp.expectsPayload) {
+                if (promptText.includes("{{payload}}")) {
+                    promptText = promptText.replace(/\{\{payload\}\}/g, payload);
+                } else {
+                    // Prepend payload if no placeholder marker
+                    promptText = `${payload}\n\n---\n\n${promptText}`;
+                }
+            }
+
             // Check if there are more waiting prompts AFTER this one
             const currentQueue = queueRef.current;
             const waitingAfter = currentQueue.filter(
                 (q) => q.status === "waiting" && q.id !== qp.id
             );
             // If more dominoes remain, append relay instruction so the chain continues
-            let promptText = qp.text;
             if (waitingAfter.length > 0) {
-                promptText += buildRelayInstruction(qp.targetAgent);
+                const nextExpectsPayload = waitingAfter[0].expectsPayload ?? false;
+                promptText += buildRelayInstruction(qp.targetAgent, nextExpectsPayload);
             }
             const result = await sendToAgent(qp.targetAgent, promptText, true);
             if (result.ok) {
@@ -768,7 +804,8 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
                 const waiting = currentQueue.filter((q) => q.status === "waiting");
 
                 for (let i = 0; i < Math.min(signals.length, waiting.length); i++) {
-                    await fireQueuedPrompt(waiting[i]);
+                    const signalPayload = signals[i].payload;
+                    await fireQueuedPrompt(waiting[i], signalPayload);
                 }
             }
 
@@ -803,10 +840,9 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
         const waitingQueue = queue.filter((q) => q.status === "waiting");
         let finalText = text;
         if (waitingQueue.length > 0) {
-            // Append relay instruction for each selected agent
             const agents = Array.from(selectedAgents);
-            // Use first agent name as the "from" in the relay signal
-            finalText = text + buildRelayInstruction(agents[0]);
+            const nextExpectsPayload = waitingQueue[0].expectsPayload ?? false;
+            finalText = text + buildRelayInstruction(agents[0], nextExpectsPayload);
         }
 
         const result = await sendToMultipleAgents(Array.from(selectedAgents), finalText, autoSubmit);
@@ -834,19 +870,20 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
     const addToQueue = React.useCallback(async () => {
         if (selectedAgents.size === 0 || !text.trim()) return;
         const agents = Array.from(selectedAgents);
-        // Create one queued prompt per selected agent
         const newEntries: QueuedPrompt[] = agents.map((agent) => ({
             id: crypto.randomUUID(),
             targetAgent: agent,
             text: text.trim(),
             createdAt: new Date().toISOString(),
             status: "waiting" as const,
+            expectsPayload: queuePayloadMode,
         }));
         const updated = [...queue, ...newEntries];
         setQueue(updated);
         await writeJsonFile(QUEUE_FILE, updated);
         setText("");
         setQueueOpen(true);
+        setQueuePayloadMode(false);
         textareaRef.current?.focus();
     }, [text, selectedAgents, queue]);
 
@@ -1173,6 +1210,20 @@ const HopperView: React.FC<ViewComponentProps<HopperViewModel>> = ({ model }) =>
                             <i className="fa-sharp fa-solid fa-bookmark" style={{ marginRight: 4 }} />
                             Save Draft
                         </button>
+                        <label
+                            className="flex items-center gap-1 cursor-pointer"
+                            title="When checked, the previous agent's relay will include a payload that gets injected into this prompt. Use {{payload}} as a placeholder, or the payload will be prepended."
+                        >
+                            <input
+                                type="checkbox"
+                                checked={queuePayloadMode}
+                                onChange={(e) => setQueuePayloadMode(e.target.checked)}
+                                style={{ accentColor: "#fbbf24", cursor: "pointer", width: 12, height: 12 }}
+                            />
+                            <span className="text-[9px]" style={{ color: queuePayloadMode ? "#fbbf24" : "var(--secondary-text-color)" }}>
+                                Payload
+                            </span>
+                        </label>
                         <button
                             onClick={addToQueue}
                             disabled={!canQueue}
