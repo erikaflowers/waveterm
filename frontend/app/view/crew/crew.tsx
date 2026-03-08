@@ -6,6 +6,7 @@ import {
     AgentColorTable,
     getAgentInfo,
     loadAvatarDataUrl,
+    MATILDA_BASE,
     type AgentInfo,
 } from "@/app/store/agents";
 import { createBlock, getApi, WOS } from "@/app/store/global";
@@ -270,7 +271,6 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
             const agentName = info?.name ?? agentKey;
             const sessionName = agentKey.toLowerCase();
             const tmux = "/opt/homebrew/bin/tmux";
-            const isOperator = info?.role === "Systems Auteur";
             const blockDef: BlockDef = {
                 meta: {
                     view: "term",
@@ -279,7 +279,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                     "agent:color": info?.color ?? null,
                     "agent:role": info?.role ?? null,
                     "term:theme": info?.defaultTheme ?? null,
-                    ...(isOperator ? {} : { "cmd:initscript.zsh": `${tmux} attach -t ${sessionName}\n` }),
+                    "cmd:initscript.zsh": `${tmux} attach -t ${sessionName}\n`,
                 },
             };
             await createBlock(blockDef);
@@ -289,7 +289,8 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleLaunch = React.useCallback(
         async (agentKey: string) => {
-            await getApi().execCommand(`/opt/homebrew/bin/tmux new-session -d -s ${agentKey}`);
+            const agentDir = `${MATILDA_BASE}/agent-${agentKey}`;
+            await getApi().execCommand(`/opt/homebrew/bin/tmux new-session -d -s ${agentKey} -c "${agentDir}"`);
             await refreshSessions();
         },
         [refreshSessions]

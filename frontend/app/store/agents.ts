@@ -169,10 +169,7 @@ async function forceRestartWithAgent(blockId: string, agentName: string | null):
     const tabId = globalStore.get(atoms.staticTabId);
     const tmux = "/opt/homebrew/bin/tmux";
 
-    // Operator (Samantha) gets a bare shell, agents get tmux attach
-    const info = agentName ? getAgentInfo(agentName) : null;
-    const isOperator = info?.role === "Systems Auteur";
-    const initScript = agentName && !isOperator
+    const initScript = agentName
         ? `${tmux} attach -t ${agentName.toLowerCase()}\n`
         : null;
 

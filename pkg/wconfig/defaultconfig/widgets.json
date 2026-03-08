@@ -100,5 +100,15 @@
                 "view": "fleetlog"
             }
         }
+    },
+    "defwidget@hopper": {
+        "display:order": 5,
+        "icon": "paper-plane",
+        "label": "hopper",
+        "blockdef": {
+            "meta": {
+                "view": "hopper"
+            }
+        }
     }
 }

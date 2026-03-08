@@ -17,6 +17,7 @@ import { DevServersViewModel } from "@/app/view/devservers/devservers";
 import { GitDashViewModel } from "@/app/view/gitdash/gitdash";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { FleetLogViewModel } from "@/app/view/fleetlog/fleetlog";
+import { HopperViewModel } from "@/app/view/hopper/hopper";
 import { UsageViewModel } from "@/app/view/usage/usage";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
@@ -68,6 +69,7 @@ BlockRegistry.set("devservers", DevServersViewModel);
 BlockRegistry.set("gitdash", GitDashViewModel);
 BlockRegistry.set("usage", UsageViewModel);
 BlockRegistry.set("fleetlog", FleetLogViewModel);
+BlockRegistry.set("hopper", HopperViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

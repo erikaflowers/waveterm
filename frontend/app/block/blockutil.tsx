@@ -43,6 +43,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "fleetlog") {
         return "satellite-dish";
     }
+    if (view == "hopper") {
+        return "paper-plane";
+    }
     return "square";
 }
 
@@ -79,6 +82,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "fleetlog") {
         return "Fleet";
+    }
+    if (view == "hopper") {
+        return "Hopper";
     }
     return view;
 }
