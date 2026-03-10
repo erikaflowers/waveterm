@@ -424,8 +424,8 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
     const [loading, setLoading] = React.useState(false);
     const [fetching, setFetching] = React.useState(false);
     const [lastFetchTime, setLastFetchTime] = React.useState<number | null>(null);
-    const [sortKey, setSortKey] = React.useState<SortKey>("name");
-    const [sortDir, setSortDir] = React.useState<SortDir>("asc");
+    const [sortKey, setSortKey] = React.useState<SortKey>("ago");
+    const [sortDir, setSortDir] = React.useState<SortDir>("desc");
 
     const refreshRepos = React.useCallback(async () => {
         setLoading(true);

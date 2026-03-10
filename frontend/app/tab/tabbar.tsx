@@ -334,9 +334,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }, [reinitVersion]);
 
     useEffect(() => {
-        window.addEventListener("resize", () => handleResizeTabs());
+        const handler = () => handleResizeTabs();
+        window.addEventListener("resize", handler);
         return () => {
-            window.removeEventListener("resize", () => handleResizeTabs());
+            window.removeEventListener("resize", handler);
         };
     }, [handleResizeTabs]);
 

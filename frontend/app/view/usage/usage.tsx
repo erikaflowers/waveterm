@@ -632,7 +632,7 @@ DailyBar.displayName = "DailyBar";
 
 // --- Setup View (no API key) ---
 
-const SetupView = React.memo(() => {
+const SetupView = React.memo(({ onRefresh }: { onRefresh?: () => void }) => {
     const configDir = getApi().getConfigDir();
     return (
         <div
@@ -670,6 +670,19 @@ const SetupView = React.memo(() => {
             >
                 Generate an Admin API key (sk-ant-admin...) from the Claude Console under Settings → Admin Keys.
             </span>
+            {onRefresh && (
+                <span
+                    onClick={onRefresh}
+                    className="text-[11px]"
+                    style={{
+                        color: "#a78bfa",
+                        cursor: "pointer",
+                        marginTop: 4,
+                    }}
+                >
+                    I've added my key — refresh
+                </span>
+            )}
         </div>
     );
 });
@@ -707,7 +720,7 @@ const UsageView: React.FC<ViewComponentProps<UsageViewModel>> = ({ model }) => {
                 className="flex flex-col overflow-hidden"
                 style={{ background: "var(--block-bg-color)", flex: "1 1 0", minWidth: 0, height: "100%" }}
             >
-                <SetupView />
+                <SetupView onRefresh={refresh} />
             </div>
         );
     }

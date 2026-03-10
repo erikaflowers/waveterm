@@ -10,7 +10,7 @@
     align-items: end;
     width: 100vw;
     -webkit-app-region: drag;
-    height: max(33px, calc(33px * var(--zoomfactor-inv)));
+    height: max(40px, calc(40px * var(--zoomfactor-inv)));
 
     button {
         -webkit-app-region: no-drag;
@@ -18,14 +18,14 @@
 
     .tabs-wrapper {
         transition: var(--tabs-wrapper-transition);
-        height: 26px;
+        height: 33px;
     }
 
     .tab-bar {
         position: relative; // Needed for absolute positioning of child tabs
         display: flex;
         flex-direction: row;
-        height: 27px;
+        height: 34px;
         -webkit-app-region: no-drag;
     }
 
@@ -47,7 +47,7 @@
 
     .add-tab {
         padding: 0 10px;
-        height: 27px;
+        height: 34px;
     }
 
     // Customize scrollbar styles
