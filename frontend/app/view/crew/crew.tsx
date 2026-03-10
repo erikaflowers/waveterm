@@ -4,11 +4,16 @@
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import {
     AgentColorTable,
+    DEFAULT_REPO_BASE,
     getAgentInfo,
+    getRemoteConfig,
+    getRepoBasePath,
     loadAvatarDataUrl,
-    MATILDA_BASE,
+    remoteConfigAtom,
+    setRemoteConfig,
     type AgentInfo,
 } from "@/app/store/agents";
+import { globalStore } from "@/app/store/jotaiStore";
 import { createBlock, getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -212,7 +217,12 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     const refreshSessions = React.useCallback(async () => {
         setLoading(true);
         try {
-            const result = await getApi().execCommand("/opt/homebrew/bin/tmux ls");
+            const remote = getRemoteConfig();
+            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const cmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} ls"`
+                : `${tmux} ls`;
+            const result = await getApi().execCommand(cmd);
             const sessions = parseTmuxLs(result.stdout);
             const sessionMap = new Map(sessions.map((s) => [s.name.toLowerCase(), s]));
 
@@ -243,15 +253,15 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         setLoading(false);
     }, []);
 
-    // Load avatars on mount
+    // Load avatars on mount (using dynamic repo base path)
     React.useEffect(() => {
         const loadAvatars = async () => {
+            const matildaPath = getRepoBasePath() + "/matilda";
             const loaded: Record<string, string | null> = {};
             for (const key of Object.keys(AgentColorTable)) {
-                const info = getAgentInfo(key);
-                if (info?.avatarPath) {
-                    loaded[key] = await loadAvatarDataUrl(info.avatarPath);
-                }
+                const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+                const avatarPath = `${matildaPath}/portraits/${capitalized}.jpg`;
+                loaded[key] = await loadAvatarDataUrl(avatarPath);
             }
             setAvatars(loaded);
         };
@@ -270,7 +280,11 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
             const info = getAgentInfo(agentKey);
             const agentName = info?.name ?? agentKey;
             const sessionName = agentKey.toLowerCase();
-            const tmux = "/opt/homebrew/bin/tmux";
+            const remote = getRemoteConfig();
+            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const initScript = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} -t "${tmux} attach -t ${sessionName}"\n`
+                : `${tmux} attach -t ${sessionName}\n`;
             const blockDef: BlockDef = {
                 meta: {
                     view: "term",
@@ -279,7 +293,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                     "agent:color": info?.color ?? null,
                     "agent:role": info?.role ?? null,
                     "term:theme": info?.defaultTheme ?? null,
-                    "cmd:initscript.zsh": `${tmux} attach -t ${sessionName}\n`,
+                    "cmd:initscript.zsh": initScript,
                 },
             };
             await createBlock(blockDef);
@@ -289,8 +303,13 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleLaunch = React.useCallback(
         async (agentKey: string) => {
-            const agentDir = `${MATILDA_BASE}/agent-${agentKey}`;
-            await getApi().execCommand(`/opt/homebrew/bin/tmux new-session -d -s ${agentKey} -c "${agentDir}"`);
+            const agentDir = `${getRepoBasePath()}/matilda/agent-${agentKey}`;
+            const remote = getRemoteConfig();
+            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const cmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} new-session -d -s ${agentKey} -c \\"${agentDir}\\""`
+                : `${tmux} new-session -d -s ${agentKey} -c "${agentDir}"`;
+            await getApi().execCommand(cmd);
             await refreshSessions();
         },
         [refreshSessions]
@@ -298,24 +317,40 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleSleep = React.useCallback(
         async (agentKey: string) => {
-            await getApi().execCommand(`/opt/homebrew/bin/tmux kill-session -t ${agentKey}`);
+            const remote = getRemoteConfig();
+            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const cmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} kill-session -t ${agentKey}"`
+                : `${tmux} kill-session -t ${agentKey}`;
+            await getApi().execCommand(cmd);
             await refreshSessions();
         },
         [refreshSessions]
     );
 
     const handleLaunchAll = React.useCallback(async () => {
+        const remote = getRemoteConfig();
+        const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
         const stopped = agents.filter((a) => !a.session);
         for (const agent of stopped) {
-            await getApi().execCommand(`/opt/homebrew/bin/tmux new-session -d -s ${agent.key}`);
+            const agentDir = `${getRepoBasePath()}/matilda/agent-${agent.key}`;
+            const cmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} new-session -d -s ${agent.key} -c \\"${agentDir}\\""`
+                : `${tmux} new-session -d -s ${agent.key} -c "${agentDir}"`;
+            await getApi().execCommand(cmd);
         }
         await refreshSessions();
     }, [agents, refreshSessions]);
 
     const handleSleepAll = React.useCallback(async () => {
+        const remote = getRemoteConfig();
+        const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
         const running = agents.filter((a) => a.session);
         for (const agent of running) {
-            await getApi().execCommand(`/opt/homebrew/bin/tmux kill-session -t ${agent.key}`);
+            const cmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} kill-session -t ${agent.key}"`
+                : `${tmux} kill-session -t ${agent.key}`;
+            await getApi().execCommand(cmd);
         }
         await refreshSessions();
     }, [agents, refreshSessions]);
@@ -327,6 +362,34 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const activeAgents = agentsWithAvatars.filter((a) => a.session);
     const inactiveAgents = agentsWithAvatars.filter((a) => !a.session);
+
+    // Remote config UI state
+    const remoteConfig = jotai.useAtomValue(remoteConfigAtom, { store: globalStore });
+    const [showRemotePanel, setShowRemotePanel] = React.useState(false);
+    const [hostInput, setHostInput] = React.useState(remoteConfig.remoteHost ?? "");
+    const [repoPathInput, setRepoPathInput] = React.useState(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
+    const isRemote = !!remoteConfig.remoteHost;
+
+    // Sync inputs when config changes externally
+    React.useEffect(() => {
+        setHostInput(remoteConfig.remoteHost ?? "");
+        setRepoPathInput(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
+    }, [remoteConfig.remoteHost, remoteConfig.repoBasePath]);
+
+    const saveHost = React.useCallback((value: string) => {
+        const trimmed = value.trim();
+        setRemoteConfig({ remoteHost: trimmed || null });
+    }, []);
+
+    const saveRepoPath = React.useCallback((value: string) => {
+        const trimmed = value.trim();
+        setRemoteConfig({ repoBasePath: trimmed || null });
+    }, []);
+
+    const clearRemote = React.useCallback(() => {
+        setRemoteConfig({ remoteHost: null });
+        setHostInput("");
+    }, []);
 
     return (
         <div
@@ -352,6 +415,80 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                     <i className={`fa-sharp fa-solid fa-arrows-rotate ${loading ? "fa-spin" : ""}`} />
                 </button>
             </div>
+            {/* Remote mode indicator */}
+            <div
+                className="flex items-center gap-2 px-3 py-1.5 border-b border-white/10 cursor-pointer"
+                style={{ width: "100%", background: "rgba(255,255,255,0.02)" }}
+                onClick={() => setShowRemotePanel((v) => !v)}
+                title="Click to configure remote host"
+            >
+                <i
+                    className={`fa-sharp fa-solid ${isRemote ? "fa-globe" : "fa-laptop"}`}
+                    style={{ color: isRemote ? "#22d3ee" : "#666", fontSize: 11 }}
+                />
+                <span className="text-[11px]" style={{ color: isRemote ? "#22d3ee" : "#888" }}>
+                    {isRemote ? `Remote: ${remoteConfig.remoteHost}` : "Local"}
+                </span>
+                <i
+                    className={`fa-sharp fa-solid fa-chevron-${showRemotePanel ? "up" : "down"} ml-auto`}
+                    style={{ color: "#666", fontSize: 9 }}
+                />
+            </div>
+            {showRemotePanel && (
+                <div
+                    className="flex flex-col gap-2 px-3 py-2 border-b border-white/10"
+                    style={{ width: "100%", background: "rgba(255,255,255,0.03)" }}
+                >
+                    <label className="text-[10px] text-muted uppercase tracking-wider">Remote Host</label>
+                    <input
+                        type="text"
+                        value={hostInput}
+                        onChange={(e) => setHostInput(e.target.value)}
+                        onBlur={() => saveHost(hostInput)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { saveHost(hostInput); (e.target as HTMLInputElement).blur(); } }}
+                        placeholder="user@host (e.g. erik@100.64.79.114)"
+                        className="text-[11px] px-2 py-1 rounded"
+                        style={{
+                            background: "rgba(0,0,0,0.3)",
+                            color: "var(--main-text-color)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            outline: "none",
+                            width: "100%",
+                        }}
+                    />
+                    <label className="text-[10px] text-muted uppercase tracking-wider" style={{ marginTop: 4 }}>Repo Base Path</label>
+                    <input
+                        type="text"
+                        value={repoPathInput}
+                        onChange={(e) => setRepoPathInput(e.target.value)}
+                        onBlur={() => saveRepoPath(repoPathInput)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { saveRepoPath(repoPathInput); (e.target as HTMLInputElement).blur(); } }}
+                        placeholder={DEFAULT_REPO_BASE}
+                        className="text-[11px] px-2 py-1 rounded"
+                        style={{
+                            background: "rgba(0,0,0,0.3)",
+                            color: "var(--main-text-color)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            outline: "none",
+                            width: "100%",
+                        }}
+                    />
+                    {isRemote && (
+                        <button
+                            onClick={clearRemote}
+                            className="text-[11px] px-2 py-1 rounded self-start"
+                            style={{
+                                background: "rgba(255,255,255,0.05)",
+                                color: "#888",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Clear (go local)
+                        </button>
+                    )}
+                </div>
+            )}
             <div
                 className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1"
                 style={{ width: "100%", minWidth: 0 }}

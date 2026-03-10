@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { getRemoteConfig } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -151,18 +152,24 @@ async function writeInbox(messages: InboxMessage[]): Promise<void> {
 // --- Data Fetching ---
 
 async function fetchActiveSessions(): Promise<SessionInfo[]> {
-    const result = await getApi().execCommand(
-        `${TMUX} list-sessions -F '#{session_name}' 2>/dev/null`
-    );
+    const remote = getRemoteConfig();
+    const tmux = remote?.remoteTmuxPath ?? TMUX;
+
+    const listCmd = remote?.remoteHost
+        ? `ssh ${remote.remoteHost} "${tmux} list-sessions -F '#{session_name}' 2>/dev/null"`
+        : `${tmux} list-sessions -F '#{session_name}' 2>/dev/null`;
+
+    const result = await getApi().execCommand(listCmd);
     if (!result.stdout) return [];
 
     const sessionNames = result.stdout.trim().split("\n").filter(Boolean);
 
     const checks = await Promise.all(
         sessionNames.map(async (name) => {
-            const cmdResult = await getApi().execCommand(
-                `${TMUX} list-panes -t ${name} -F '#{pane_current_command}' 2>/dev/null`
-            );
+            const paneCmd = remote?.remoteHost
+                ? `ssh ${remote.remoteHost} "${tmux} list-panes -t ${name} -F '#{pane_current_command}' 2>/dev/null"`
+                : `${tmux} list-panes -t ${name} -F '#{pane_current_command}' 2>/dev/null`;
+            const cmdResult = await getApi().execCommand(paneCmd);
             const cmd = cmdResult.stdout?.trim() || "";
             return { name, hasClaudeCode: cmd === "node" };
         })
@@ -178,11 +185,25 @@ async function sendToAgent(
     text: string,
     autoSubmit: boolean
 ): Promise<{ ok: boolean; error?: string }> {
-    const escaped = text.replace(/'/g, "'\\''" );
+    const remote = getRemoteConfig();
+    const tmux = remote?.remoteTmuxPath ?? TMUX;
 
-    let cmd = `${TMUX} set-buffer '${escaped}' && ${TMUX} paste-buffer -t '${sessionName}'`;
-    if (autoSubmit) {
-        cmd += ` && sleep 0.1 && ${TMUX} send-keys -t '${sessionName}' Enter`;
+    let cmd: string;
+    if (remote?.remoteHost) {
+        // Base64 encode to avoid shell escaping issues over SSH
+        const bytes = new TextEncoder().encode(text);
+        const b64 = btoa(String.fromCharCode(...bytes));
+        let tmuxChain = `echo '${b64}' | base64 -D | ${tmux} load-buffer - && ${tmux} paste-buffer -t '${sessionName}'`;
+        if (autoSubmit) {
+            tmuxChain += ` && sleep 0.1 && ${tmux} send-keys -t '${sessionName}' Enter`;
+        }
+        cmd = `ssh ${remote.remoteHost} "${tmuxChain}"`;
+    } else {
+        const escaped = text.replace(/'/g, "'\\''");
+        cmd = `${tmux} set-buffer '${escaped}' && ${tmux} paste-buffer -t '${sessionName}'`;
+        if (autoSubmit) {
+            cmd += ` && sleep 0.1 && ${tmux} send-keys -t '${sessionName}' Enter`;
+        }
     }
 
     const result = await getApi().execCommand(cmd);

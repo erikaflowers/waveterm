@@ -9,7 +9,7 @@ import * as React from "react";
 
 // --- Types ---
 
-type HealthFlag = "dirty" | "unpushed" | "stale" | "detached" | "not-main";
+type HealthFlag = "dirty" | "unpushed" | "behind" | "stale" | "detached" | "not-main";
 
 type RepoInfo = {
     name: string;
@@ -23,6 +23,7 @@ type RepoInfo = {
     lastCommitHash: string;
     remoteUrl: string;
     unpushedCount: number;
+    behindCount: number;
     staleDays: number;
     health: HealthFlag[];
 };
@@ -38,7 +39,10 @@ const STALE_THRESHOLD_DAYS = 7;
 
 // --- Shell Command ---
 
-const GIT_SCAN_COMMAND = `find "${SCAN_DIR}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; echo "---REPO:$repo"; echo "BRANCH:$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"; echo "DIRTY:$(git -C "$repo" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"; echo "MSG:$(git -C "$repo" log -1 --pretty=format:'%s' 2>/dev/null)"; echo "AGO:$(git -C "$repo" log -1 --pretty=format:'%ar' 2>/dev/null)"; echo "TS:$(git -C "$repo" log -1 --pretty=format:'%ct' 2>/dev/null)"; echo "HASH:$(git -C "$repo" log -1 --pretty=format:'%H' 2>/dev/null)"; echo "REMOTE:$(git -C "$repo" remote get-url origin 2>/dev/null)"; echo "UNPUSHED:$(git -C "$repo" log @{u}.. --oneline 2>/dev/null | wc -l | tr -d ' ')"; done`;
+const GIT_SCAN_COMMAND = `find "${SCAN_DIR}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; echo "---REPO:$repo"; echo "BRANCH:$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"; echo "DIRTY:$(git -C "$repo" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"; echo "MSG:$(git -C "$repo" log -1 --pretty=format:'%s' 2>/dev/null)"; echo "AGO:$(git -C "$repo" log -1 --pretty=format:'%ar' 2>/dev/null)"; echo "TS:$(git -C "$repo" log -1 --pretty=format:'%ct' 2>/dev/null)"; echo "HASH:$(git -C "$repo" log -1 --pretty=format:'%H' 2>/dev/null)"; echo "REMOTE:$(git -C "$repo" remote get-url origin 2>/dev/null)"; echo "UNPUSHED:$(git -C "$repo" log @{u}.. --oneline 2>/dev/null | wc -l | tr -d ' ')"; echo "BEHIND:$(git -C "$repo" rev-list HEAD..@{u} --count 2>/dev/null || echo 0)"; done`;
+
+const GIT_FETCH_COMMAND = `find "${SCAN_DIR}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; git -C "$repo" fetch --all --quiet 2>/dev/null; done`;
+const FETCH_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 // --- Helpers ---
 
@@ -78,6 +82,7 @@ function parseRepoOutput(stdout: string): RepoInfo[] {
         const lastCommitHash = get("HASH:");
         const remoteUrl = get("REMOTE:");
         const unpushedCount = parseInt(get("UNPUSHED:")) || 0;
+        const behindCount = parseInt(get("BEHIND:")) || 0;
 
         const now = Math.floor(Date.now() / 1000);
         const staleDays = lastCommitTs > 0 ? Math.floor((now - lastCommitTs) / 86400) : 0;
@@ -85,6 +90,7 @@ function parseRepoOutput(stdout: string): RepoInfo[] {
         const health: HealthFlag[] = [];
         if (dirtyCount > 0) health.push("dirty");
         if (unpushedCount > 0) health.push("unpushed");
+        if (behindCount > 0) health.push("behind");
         if (staleDays >= STALE_THRESHOLD_DAYS) health.push("stale");
         if (isDetached) health.push("detached");
         if (!isDetached && branch !== "main") health.push("not-main");
@@ -103,6 +109,7 @@ function parseRepoOutput(stdout: string): RepoInfo[] {
             lastCommitHash,
             remoteUrl,
             unpushedCount,
+            behindCount,
             staleDays,
             health,
         });
@@ -144,6 +151,7 @@ function sortRepos(repos: RepoInfo[], key: SortKey, dir: SortDir): RepoInfo[] {
 const healthColors: Record<HealthFlag, string> = {
     dirty: "#ef4444",
     unpushed: "#eab308",
+    behind: "#a855f7",
     stale: "#f97316",
     detached: "#ef4444",
     "not-main": "#06b6d4",
@@ -263,7 +271,24 @@ const RepoRow = React.memo(
                 {/* Top row: repo / branch / status / ago / health / actions */}
                 <div className="flex items-center gap-2" style={{ width: "100%" }}>
                     {/* Repo name */}
-                    <div style={{ flex: "2.2 1 0", minWidth: 0 }}>
+                    <div style={{ flex: "2.2 1 0", minWidth: 0 }} className="flex items-center gap-1.5">
+                        {repo.behindCount > 0 && (
+                            <span
+                                className="text-[9px] font-bold flex-shrink-0"
+                                style={{
+                                    color: "#a855f7",
+                                    backgroundColor: "#a855f718",
+                                    border: "1px solid #a855f740",
+                                    borderRadius: 8,
+                                    padding: "0 5px",
+                                    lineHeight: "16px",
+                                    minWidth: 18,
+                                    textAlign: "center",
+                                }}
+                            >
+                                {repo.behindCount}
+                            </span>
+                        )}
                         <span
                             className="text-[12px] font-semibold truncate"
                             style={{ display: "block", color: "var(--main-text-color)" }}
@@ -397,6 +422,8 @@ RepoRow.displayName = "RepoRow";
 const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) => {
     const [repos, setRepos] = React.useState<RepoInfo[]>([]);
     const [loading, setLoading] = React.useState(false);
+    const [fetching, setFetching] = React.useState(false);
+    const [lastFetchTime, setLastFetchTime] = React.useState<number | null>(null);
     const [sortKey, setSortKey] = React.useState<SortKey>("name");
     const [sortDir, setSortDir] = React.useState<SortDir>("asc");
 
@@ -412,11 +439,31 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
         setLoading(false);
     }, []);
 
+    const fetchAndRefresh = React.useCallback(async () => {
+        setFetching(true);
+        try {
+            await getApi().execCommand(GIT_FETCH_COMMAND);
+            setLastFetchTime(Date.now());
+        } catch (e) {
+            console.error("Failed to fetch repos:", e);
+        }
+        await refreshRepos();
+        setFetching(false);
+    }, [refreshRepos]);
+
+    // Quick scan on mount + poll every 60s
     React.useEffect(() => {
         refreshRepos();
         const interval = setInterval(refreshRepos, POLL_INTERVAL);
         return () => clearInterval(interval);
     }, [refreshRepos]);
+
+    // Fetch on mount + hourly
+    React.useEffect(() => {
+        fetchAndRefresh();
+        const interval = setInterval(fetchAndRefresh, FETCH_INTERVAL);
+        return () => clearInterval(interval);
+    }, [fetchAndRefresh]);
 
     const handleSort = React.useCallback(
         (key: SortKey) => {
@@ -450,6 +497,7 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
     // Summary stats
     const dirtyCount = repos.filter((r) => r.dirtyCount > 0).length;
     const unpushedCount = repos.filter((r) => r.unpushedCount > 0).length;
+    const behindCount = repos.filter((r) => r.behindCount > 0).length;
     const staleCount = repos.filter((r) => r.staleDays >= STALE_THRESHOLD_DAYS).length;
 
     return (
@@ -466,14 +514,29 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
                     <span className="text-[12px] font-semibold text-muted uppercase tracking-wider">Git</span>
                     <span className="text-[11px] text-muted">{repos.length} tracked</span>
                 </div>
-                <button
-                    onClick={refreshRepos}
-                    className="text-[11px] text-muted hover:text-white px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(255,255,255,0.05)", cursor: "pointer", border: "none" }}
-                    title="Refresh"
-                >
-                    <i className={`fa-sharp fa-solid fa-arrows-rotate ${loading ? "fa-spin" : ""}`} />
-                </button>
+                <div className="flex items-center gap-1.5">
+                    {lastFetchTime && (
+                        <span className="text-[10px] text-muted" style={{ opacity: 0.5 }}>
+                            fetched {Math.round((Date.now() - lastFetchTime) / 60000)}m ago
+                        </span>
+                    )}
+                    <button
+                        onClick={fetchAndRefresh}
+                        className="text-[11px] text-muted hover:text-white px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(255,255,255,0.05)", cursor: "pointer", border: "none" }}
+                        title="Fetch all remotes"
+                    >
+                        <i className={`fa-sharp fa-solid fa-cloud-arrow-down ${fetching ? "fa-spin" : ""}`} />
+                    </button>
+                    <button
+                        onClick={refreshRepos}
+                        className="text-[11px] text-muted hover:text-white px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(255,255,255,0.05)", cursor: "pointer", border: "none" }}
+                        title="Refresh"
+                    >
+                        <i className={`fa-sharp fa-solid fa-arrows-rotate ${loading ? "fa-spin" : ""}`} />
+                    </button>
+                </div>
             </div>
 
             {/* Column headers */}
@@ -533,6 +596,11 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
                     {unpushedCount > 0 && (
                         <span className="text-[11px]" style={{ color: "#eab308" }}>
                             {unpushedCount} unpushed
+                        </span>
+                    )}
+                    {behindCount > 0 && (
+                        <span className="text-[11px]" style={{ color: "#a855f7" }}>
+                            {behindCount} behind
                         </span>
                     )}
                     {staleCount > 0 && (

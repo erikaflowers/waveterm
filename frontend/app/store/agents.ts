@@ -16,6 +16,16 @@ interface AgentInfo {
     defaultTheme: string;
 }
 
+interface RemoteConfig {
+    remoteHost: string | null;
+    remoteTmuxPath: string | null;
+    repoBasePath: string | null;
+}
+
+const DEFAULT_REPO_BASE = "/Users/erikflowers/claude projects";
+
+const remoteConfigAtom = atom<RemoteConfig>({ remoteHost: null, remoteTmuxPath: null, repoBasePath: null });
+
 // Base path for Matilda agent directories
 const MATILDA_BASE = "/Users/erikflowers/claude projects/matilda";
 
@@ -130,6 +140,13 @@ async function loadAgentPreferences(): Promise<void> {
     } catch {
         // File doesn't exist yet or parse error — start with empty prefs
     }
+    // Populate remote config from _global key
+    const globalPrefs = agentPrefsMap.get("_global") ?? {};
+    globalStore.set(remoteConfigAtom, {
+        remoteHost: globalPrefs["remoteHost"] ?? null,
+        remoteTmuxPath: globalPrefs["remoteTmuxPath"] ?? null,
+        repoBasePath: globalPrefs["repoBasePath"] ?? null,
+    });
     prefsLoaded = true;
 }
 
@@ -160,6 +177,40 @@ async function setAgentPref(agentName: string, key: string, value: string | null
     await saveAgentPreferences();
 }
 
+function getRemoteConfig(): RemoteConfig {
+    return globalStore.get(remoteConfigAtom);
+}
+
+function getRepoBasePath(): string {
+    const config = globalStore.get(remoteConfigAtom);
+    return config.repoBasePath ?? DEFAULT_REPO_BASE;
+}
+
+async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
+    const current = globalStore.get(remoteConfigAtom);
+    const updated: RemoteConfig = { ...current, ...partial };
+    globalStore.set(remoteConfigAtom, updated);
+    // Persist to _global key in prefs file
+    const globalPrefs = agentPrefsMap.get("_global") ?? {};
+    if (updated.remoteHost != null) {
+        globalPrefs["remoteHost"] = updated.remoteHost;
+    } else {
+        delete globalPrefs["remoteHost"];
+    }
+    if (updated.remoteTmuxPath != null) {
+        globalPrefs["remoteTmuxPath"] = updated.remoteTmuxPath;
+    } else {
+        delete globalPrefs["remoteTmuxPath"];
+    }
+    if (updated.repoBasePath != null) {
+        globalPrefs["repoBasePath"] = updated.repoBasePath;
+    } else {
+        delete globalPrefs["repoBasePath"];
+    }
+    agentPrefsMap.set("_global", globalPrefs);
+    await saveAgentPreferences();
+}
+
 // Load prefs on module init
 loadAgentPreferences();
 
@@ -167,11 +218,18 @@ loadAgentPreferences();
 
 async function forceRestartWithAgent(blockId: string, agentName: string | null): Promise<void> {
     const tabId = globalStore.get(atoms.staticTabId);
-    const tmux = "/opt/homebrew/bin/tmux";
+    const remote = getRemoteConfig();
+    const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
 
-    const initScript = agentName
-        ? `${tmux} attach -t ${agentName.toLowerCase()}\n`
-        : null;
+    let initScript: string | null = null;
+    if (agentName) {
+        const session = agentName.toLowerCase();
+        if (remote?.remoteHost) {
+            initScript = `ssh ${remote.remoteHost} -t "${tmux} attach -t ${session}"\n`;
+        } else {
+            initScript = `${tmux} attach -t ${session}\n`;
+        }
+    }
 
     await RpcApi.SetMetaCommand(TabRpcClient, {
         oref: WOS.makeORef("block", blockId),
@@ -188,13 +246,18 @@ async function forceRestartWithAgent(blockId: string, agentName: string | null):
 export {
     agentsAtom,
     AgentColorTable,
+    DEFAULT_REPO_BASE,
     forceRestartWithAgent,
     getAgentColor,
     getAgentInfo,
     getAgentPrefs,
+    getRemoteConfig,
+    getRepoBasePath,
     loadAgentPreferences,
     loadAvatarDataUrl,
     MATILDA_BASE,
+    remoteConfigAtom,
     setAgentPref,
+    setRemoteConfig,
 };
-export type { AgentInfo };
+export type { AgentInfo, RemoteConfig };

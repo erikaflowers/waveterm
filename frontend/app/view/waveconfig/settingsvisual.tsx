@@ -377,6 +377,138 @@ const AccountSection = memo(() => {
 });
 AccountSection.displayName = "AccountSection";
 
+interface SecretSettingProps {
+    label: string;
+    description?: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+}
+
+const SecretSetting = memo(({ label, description, value, onChange, placeholder }: SecretSettingProps) => {
+    const [localValue, setLocalValue] = useState(value || "");
+    const [revealed, setRevealed] = useState(false);
+
+    useEffect(() => {
+        setLocalValue(value || "");
+    }, [value]);
+
+    const handleSave = useCallback(() => {
+        const trimmed = localValue.trim();
+        if (trimmed !== (value || "")) {
+            onChange(trimmed);
+        }
+    }, [localValue, value, onChange]);
+
+    const maskedDisplay = localValue
+        ? localValue.slice(0, 7) + "..." + localValue.slice(-4)
+        : "";
+
+    return (
+        <div className="flex flex-col gap-1.5 px-3 py-2 rounded-md hover:bg-secondary/20 transition-colors">
+            <div className="flex flex-col">
+                <span className="text-sm font-medium">{label}</span>
+                {description && <span className="text-xs text-muted mt-0.5">{description}</span>}
+            </div>
+            <div className="flex items-center gap-2">
+                {revealed ? (
+                    <input
+                        type="text"
+                        value={localValue}
+                        onChange={(e) => setLocalValue(e.target.value)}
+                        onBlur={handleSave}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                handleSave();
+                                (e.target as HTMLInputElement).blur();
+                            }
+                        }}
+                        placeholder={placeholder}
+                        className="flex-1 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:border-accent"
+                        style={{ fontFamily: "monospace", minWidth: 0 }}
+                    />
+                ) : (
+                    <span
+                        className="flex-1 px-2 py-1 text-sm rounded"
+                        style={{
+                            fontFamily: "monospace",
+                            color: localValue ? "var(--main-text-color)" : "#666",
+                            backgroundColor: "rgba(0,0,0,0.2)",
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {localValue ? maskedDisplay : "Not set"}
+                    </span>
+                )}
+                <button
+                    onClick={() => setRevealed((v) => !v)}
+                    className="px-2 py-1 text-xs rounded transition-colors"
+                    style={{
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        color: "#888",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                    }}
+                >
+                    {revealed ? "Hide" : "Edit"}
+                </button>
+            </div>
+        </div>
+    );
+});
+SecretSetting.displayName = "SecretSetting";
+
+interface TextSettingProps {
+    label: string;
+    description?: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+}
+
+const TextSetting = memo(({ label, description, value, onChange, placeholder }: TextSettingProps) => {
+    const [localValue, setLocalValue] = useState(value || "");
+
+    useEffect(() => {
+        setLocalValue(value || "");
+    }, [value]);
+
+    const handleSave = useCallback(() => {
+        const trimmed = localValue.trim();
+        if (trimmed !== (value || "")) {
+            onChange(trimmed || null);
+        }
+    }, [localValue, value, onChange]);
+
+    return (
+        <div className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-secondary/20 transition-colors">
+            <div className="flex flex-col">
+                <span className="text-sm font-medium">{label}</span>
+                {description && <span className="text-xs text-muted mt-0.5">{description}</span>}
+            </div>
+            <input
+                type="text"
+                value={localValue}
+                onChange={(e) => setLocalValue(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                        handleSave();
+                        (e.target as HTMLInputElement).blur();
+                    }
+                }}
+                placeholder={placeholder}
+                className="w-48 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:border-accent"
+            />
+        </div>
+    );
+});
+TextSetting.displayName = "TextSetting";
+
 const SettingsVisualContent = memo(({ model }: { model: WaveConfigViewModel }) => {
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
     const liveSettings = useAtomValue(getAtoms().settingsAtom);
@@ -402,6 +534,29 @@ const SettingsVisualContent = memo(({ model }: { model: WaveConfigViewModel }) =
     return (
         <div className="flex flex-col p-6 overflow-y-auto h-full">
             <AccountSection />
+            <SettingsSection title="AI">
+                <SecretSetting
+                    label="API Token"
+                    description="Anthropic, OpenAI, or other provider API key"
+                    value={liveSettings["ai:apitoken"] ?? ""}
+                    onChange={(v) => updateSetting("ai:apitoken", v)}
+                    placeholder="sk-ant-..."
+                />
+                <TextSetting
+                    label="Model"
+                    description="e.g. claude-sonnet-4-5-20250514, gpt-4o"
+                    value={liveSettings["ai:model"] ?? ""}
+                    onChange={(v) => updateSetting("ai:model", v)}
+                    placeholder="claude-sonnet-4-5-20250514"
+                />
+                <TextSetting
+                    label="Base URL"
+                    description="Custom endpoint (leave empty for default)"
+                    value={liveSettings["ai:baseurl"] ?? ""}
+                    onChange={(v) => updateSetting("ai:baseurl", v)}
+                    placeholder="https://api.anthropic.com"
+                />
+            </SettingsSection>
             <SettingsSection title="Layout">
                 <NumberSetting
                     label="Pane Gap Size"
