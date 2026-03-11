@@ -46,6 +46,18 @@ export function blockViewToIcon(view: string): string {
     if (view == "hopper") {
         return "paper-plane";
     }
+    if (view == "matrix") {
+        return "binary";
+    }
+    if (view == "oscilloscope") {
+        return "wave-square";
+    }
+    if (view == "hexdump") {
+        return "microchip";
+    }
+    if (view == "nodegraph") {
+        return "diagram-project";
+    }
     return "square";
 }
 
@@ -85,6 +97,18 @@ export function blockViewToName(view: string): string {
     }
     if (view == "hopper") {
         return "Hopper";
+    }
+    if (view == "matrix") {
+        return "Matrix";
+    }
+    if (view == "oscilloscope") {
+        return "Scope";
+    }
+    if (view == "hexdump") {
+        return "Hex Dump";
+    }
+    if (view == "nodegraph") {
+        return "Nodes";
     }
     return view;
 }

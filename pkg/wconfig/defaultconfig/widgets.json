@@ -110,5 +110,45 @@
                 "view": "hopper"
             }
         }
+    },
+    "defwidget@matrix": {
+        "display:order": 10,
+        "icon": "binary",
+        "label": "matrix",
+        "blockdef": {
+            "meta": {
+                "view": "matrix"
+            }
+        }
+    },
+    "defwidget@oscilloscope": {
+        "display:order": 11,
+        "icon": "wave-square",
+        "label": "scope",
+        "blockdef": {
+            "meta": {
+                "view": "oscilloscope"
+            }
+        }
+    },
+    "defwidget@hexdump": {
+        "display:order": 12,
+        "icon": "microchip",
+        "label": "hexdump",
+        "blockdef": {
+            "meta": {
+                "view": "hexdump"
+            }
+        }
+    },
+    "defwidget@nodegraph": {
+        "display:order": 13,
+        "icon": "diagram-project",
+        "label": "nodes",
+        "blockdef": {
+            "meta": {
+                "view": "nodegraph"
+            }
+        }
     }
 }

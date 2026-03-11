@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getRemoteConfig } from "@/app/store/agents";
+import { getRemoteConfig, getTmuxPath } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -56,7 +56,6 @@ type UserViewEntry = {
 
 // --- Constants ---
 
-const TMUX = "/opt/homebrew/bin/tmux";
 const DB_PATH = "~/.claude/hooks/fleet-log.db";
 const POLL_INTERVAL = 30000;
 const MAX_ENTRIES = 50;
@@ -251,7 +250,7 @@ async function sendReplyToAgent(
     text: string
 ): Promise<{ ok: boolean; error?: string }> {
     const remote = getRemoteConfig();
-    const tmux = remote?.remoteTmuxPath ?? TMUX;
+    const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
 
     let cmd: string;
     if (remote?.remoteHost) {

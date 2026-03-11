@@ -94,10 +94,14 @@ async function loadAvatarDataUrl(filePath: string): Promise<string | null> {
         return avatarLoadingPromises.get(filePath);
     }
     const promise = getApi().readFileBase64(filePath).then((dataUrl) => {
+        if (!dataUrl) {
+            console.warn(`[avatars] readFileBase64 returned null for: ${filePath}`);
+        }
         avatarCache.set(filePath, dataUrl);
         avatarLoadingPromises.delete(filePath);
         return dataUrl;
-    }).catch(() => {
+    }).catch((e) => {
+        console.warn(`[avatars] failed to load: ${filePath}`, e);
         avatarCache.set(filePath, null);
         avatarLoadingPromises.delete(filePath);
         return null;
@@ -214,12 +218,54 @@ async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
 // Load prefs on module init
 loadAgentPreferences();
 
+// --- Tmux Path Resolution ---
+
+let resolvedTmuxPath: string | null = null;
+
+async function resolveTmuxPath(): Promise<string> {
+    if (resolvedTmuxPath) return resolvedTmuxPath;
+    // Try common paths in order
+    const candidates = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"];
+    for (const p of candidates) {
+        try {
+            const result = await getApi().execCommand(`test -x ${p} && echo ok`);
+            if (result.stdout?.trim() === "ok") {
+                resolvedTmuxPath = p;
+                return p;
+            }
+        } catch {
+            // continue
+        }
+    }
+    // Fallback: try bare `tmux` via which
+    try {
+        const result = await getApi().execCommand("which tmux");
+        const path = result.stdout?.trim();
+        if (path) {
+            resolvedTmuxPath = path;
+            return path;
+        }
+    } catch {
+        // continue
+    }
+    // Last resort
+    resolvedTmuxPath = "tmux";
+    return "tmux";
+}
+
+function getTmuxPath(): string {
+    return resolvedTmuxPath ?? "tmux";
+}
+
+// Resolve on module load
+resolveTmuxPath();
+
 // --- Tmux Session Switching via ForceRestart ---
 
 async function forceRestartWithAgent(blockId: string, agentName: string | null): Promise<void> {
     const tabId = globalStore.get(atoms.staticTabId);
     const remote = getRemoteConfig();
-    const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+    const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
 
     let initScript: string | null = null;
     if (agentName) {
@@ -253,6 +299,7 @@ export {
     getAgentPrefs,
     getRemoteConfig,
     getRepoBasePath,
+    getTmuxPath,
     loadAgentPreferences,
     loadAvatarDataUrl,
     MATILDA_BASE,

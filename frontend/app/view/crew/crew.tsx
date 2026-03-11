@@ -8,6 +8,7 @@ import {
     getAgentInfo,
     getRemoteConfig,
     getRepoBasePath,
+    getTmuxPath,
     loadAvatarDataUrl,
     remoteConfigAtom,
     setRemoteConfig,
@@ -218,7 +219,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         setLoading(true);
         try {
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} ls"`
                 : `${tmux} ls`;
@@ -257,12 +258,17 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     React.useEffect(() => {
         const loadAvatars = async () => {
             const matildaPath = getRepoBasePath() + "/matilda";
+            console.log("[crew] loading avatars from:", matildaPath + "/portraits/");
             const loaded: Record<string, string | null> = {};
+            let successCount = 0;
             for (const key of Object.keys(AgentColorTable)) {
                 const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
                 const avatarPath = `${matildaPath}/portraits/${capitalized}.jpg`;
-                loaded[key] = await loadAvatarDataUrl(avatarPath);
+                const result = await loadAvatarDataUrl(avatarPath);
+                loaded[key] = result;
+                if (result) successCount++;
             }
+            console.log(`[crew] avatars loaded: ${successCount}/${Object.keys(AgentColorTable).length}`);
             setAvatars(loaded);
         };
         loadAvatars();
@@ -281,7 +287,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
             const agentName = info?.name ?? agentKey;
             const sessionName = agentKey.toLowerCase();
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
             const initScript = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} -t "${tmux} attach -t ${sessionName}"\n`
                 : `${tmux} attach -t ${sessionName}\n`;
@@ -305,7 +311,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         async (agentKey: string) => {
             const agentDir = `${getRepoBasePath()}/matilda/agent-${agentKey}`;
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} new-session -d -s ${agentKey} -c \\"${agentDir}\\""`
                 : `${tmux} new-session -d -s ${agentKey} -c "${agentDir}"`;
@@ -318,7 +324,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     const handleSleep = React.useCallback(
         async (agentKey: string) => {
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} kill-session -t ${agentKey}"`
                 : `${tmux} kill-session -t ${agentKey}`;
@@ -330,7 +336,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleLaunchAll = React.useCallback(async () => {
         const remote = getRemoteConfig();
-        const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+        const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
         const stopped = agents.filter((a) => !a.session);
         for (const agent of stopped) {
             const agentDir = `${getRepoBasePath()}/matilda/agent-${agent.key}`;
@@ -344,7 +350,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleSleepAll = React.useCallback(async () => {
         const remote = getRemoteConfig();
-        const tmux = remote?.remoteTmuxPath ?? "/opt/homebrew/bin/tmux";
+        const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
         const running = agents.filter((a) => a.session);
         for (const agent of running) {
             const cmd = remote?.remoteHost

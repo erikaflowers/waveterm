@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getRemoteConfig } from "@/app/store/agents";
+import { getRemoteConfig, getTmuxPath } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -10,7 +10,7 @@ import * as React from "react";
 
 // --- Constants ---
 
-const TMUX = "/opt/homebrew/bin/tmux";
+const TMUX = getTmuxPath();
 
 // Agent colors — mirrored from agents.ts
 const AGENT_COLORS: Record<string, string> = {
