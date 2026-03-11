@@ -194,6 +194,13 @@ async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
     const current = globalStore.get(remoteConfigAtom);
     const updated: RemoteConfig = { ...current, ...partial };
     globalStore.set(remoteConfigAtom, updated);
+    // Clear remote tmux cache so it re-resolves for new host
+    if ("remoteHost" in partial || "remoteTmuxPath" in partial) {
+        resolvedRemoteTmuxPath = null;
+        if (updated.remoteHost && !updated.remoteTmuxPath) {
+            resolveRemoteTmuxPath();
+        }
+    }
     // Persist to _global key in prefs file
     const globalPrefs = agentPrefsMap.get("_global") ?? {};
     if (updated.remoteHost != null) {
@@ -218,54 +225,91 @@ async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
 // Load prefs on module init
 loadAgentPreferences();
 
-// --- Tmux Path Resolution ---
+// --- Tmux Path Resolution (Local + Remote) ---
 
-let resolvedTmuxPath: string | null = null;
+// Local tmux path — resolved once on the machine running Terminus
+let resolvedLocalTmuxPath: string | null = null;
 
-async function resolveTmuxPath(): Promise<string> {
-    if (resolvedTmuxPath) return resolvedTmuxPath;
-    // Try common paths in order
+async function resolveLocalTmuxPath(): Promise<string> {
+    if (resolvedLocalTmuxPath) return resolvedLocalTmuxPath;
     const candidates = ["/opt/homebrew/bin/tmux", "/usr/local/bin/tmux", "/usr/bin/tmux"];
     for (const p of candidates) {
         try {
             const result = await getApi().execCommand(`test -x ${p} && echo ok`);
             if (result.stdout?.trim() === "ok") {
-                resolvedTmuxPath = p;
+                resolvedLocalTmuxPath = p;
                 return p;
             }
         } catch {
             // continue
         }
     }
-    // Fallback: try bare `tmux` via which
     try {
         const result = await getApi().execCommand("which tmux");
         const path = result.stdout?.trim();
         if (path) {
-            resolvedTmuxPath = path;
+            resolvedLocalTmuxPath = path;
             return path;
         }
     } catch {
         // continue
     }
-    // Last resort
-    resolvedTmuxPath = "tmux";
+    resolvedLocalTmuxPath = "tmux";
     return "tmux";
 }
 
 function getTmuxPath(): string {
-    return resolvedTmuxPath ?? "tmux";
+    return resolvedLocalTmuxPath ?? "tmux";
 }
 
-// Resolve on module load
-resolveTmuxPath();
+// Remote tmux path — resolved via SSH when remoteHost is configured
+let resolvedRemoteTmuxPath: string | null = null;
+const REMOTE_TMUX_FALLBACK = "/opt/homebrew/bin/tmux";
+
+async function resolveRemoteTmuxPath(): Promise<string> {
+    const remote = getRemoteConfig();
+    if (!remote?.remoteHost) {
+        resolvedRemoteTmuxPath = null;
+        return REMOTE_TMUX_FALLBACK;
+    }
+    try {
+        const result = await getApi().execCommand(`ssh ${remote.remoteHost} "which tmux"`);
+        const path = result.stdout?.trim();
+        if (path) {
+            resolvedRemoteTmuxPath = path;
+            return path;
+        }
+    } catch {
+        // SSH failed or tmux not found
+    }
+    resolvedRemoteTmuxPath = REMOTE_TMUX_FALLBACK;
+    return REMOTE_TMUX_FALLBACK;
+}
+
+function getRemoteTmuxPath(): string {
+    const remote = getRemoteConfig();
+    // User override > auto-detected > fallback
+    return remote?.remoteTmuxPath ?? resolvedRemoteTmuxPath ?? REMOTE_TMUX_FALLBACK;
+}
+
+// Single helper: returns the correct tmux path for the current mode
+function getTmuxCmd(): string {
+    const remote = getRemoteConfig();
+    if (remote?.remoteHost) {
+        return getRemoteTmuxPath();
+    }
+    return getTmuxPath();
+}
+
+// Resolve local on module load
+resolveLocalTmuxPath();
 
 // --- Tmux Session Switching via ForceRestart ---
 
 async function forceRestartWithAgent(blockId: string, agentName: string | null): Promise<void> {
     const tabId = globalStore.get(atoms.staticTabId);
     const remote = getRemoteConfig();
-    const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+    const tmux = getTmuxCmd();
 
     let initScript: string | null = null;
     if (agentName) {
@@ -298,12 +342,15 @@ export {
     getAgentInfo,
     getAgentPrefs,
     getRemoteConfig,
+    getRemoteTmuxPath,
     getRepoBasePath,
+    getTmuxCmd,
     getTmuxPath,
     loadAgentPreferences,
     loadAvatarDataUrl,
     MATILDA_BASE,
     remoteConfigAtom,
+    resolveRemoteTmuxPath,
     setAgentPref,
     setRemoteConfig,
 };

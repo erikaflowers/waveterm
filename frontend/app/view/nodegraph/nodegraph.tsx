@@ -3,7 +3,7 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { AgentColorTable, getTmuxPath } from "@/app/store/agents";
+import { AgentColorTable, getRemoteConfig, getTmuxCmd } from "@/app/store/agents";
 import { getApi } from "@/app/store/global";
 import { WOS } from "@/store/global";
 import * as jotai from "jotai";
@@ -557,13 +557,16 @@ const NodeGraphView: React.FC<ViewComponentProps<NodeGraphViewModel>> = React.me
         };
     }, []);
 
-    // Poll tmux for active sessions
+    // Poll tmux for active sessions (local or remote)
     React.useEffect(() => {
         const checkTmux = async () => {
             try {
-                const result = await getApi().execCommand(
-                    `${getTmuxPath()} list-sessions -F '#{session_name}' 2>/dev/null`
-                );
+                const remote = getRemoteConfig();
+                const tmux = getTmuxCmd();
+                const cmd = remote?.remoteHost
+                    ? `ssh ${remote.remoteHost} "${tmux} list-sessions -F '#{session_name}' 2>/dev/null"`
+                    : `${tmux} list-sessions -F '#{session_name}' 2>/dev/null`;
+                const result = await getApi().execCommand(cmd);
                 const sessions = new Set(
                     (result.stdout || "").trim().split("\n").filter(Boolean).map((s) => s.toLowerCase())
                 );

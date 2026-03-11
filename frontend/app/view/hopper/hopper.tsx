@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getRemoteConfig, getTmuxPath } from "@/app/store/agents";
+import { getRemoteConfig, getTmuxCmd } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -10,7 +10,7 @@ import * as React from "react";
 
 // --- Constants ---
 
-const TMUX = getTmuxPath();
+// tmux path resolved dynamically via getTmuxCmd()
 
 // Agent colors — mirrored from agents.ts
 const AGENT_COLORS: Record<string, string> = {
@@ -153,7 +153,7 @@ async function writeInbox(messages: InboxMessage[]): Promise<void> {
 
 async function fetchActiveSessions(): Promise<SessionInfo[]> {
     const remote = getRemoteConfig();
-    const tmux = remote?.remoteTmuxPath ?? TMUX;
+    const tmux = getTmuxCmd();
 
     const listCmd = remote?.remoteHost
         ? `ssh ${remote.remoteHost} "${tmux} list-sessions -F '#{session_name}' 2>/dev/null"`
@@ -186,7 +186,7 @@ async function sendToAgent(
     autoSubmit: boolean
 ): Promise<{ ok: boolean; error?: string }> {
     const remote = getRemoteConfig();
-    const tmux = remote?.remoteTmuxPath ?? TMUX;
+    const tmux = getTmuxCmd();
 
     let cmd: string;
     if (remote?.remoteHost) {

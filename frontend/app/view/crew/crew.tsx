@@ -8,9 +8,10 @@ import {
     getAgentInfo,
     getRemoteConfig,
     getRepoBasePath,
-    getTmuxPath,
+    getTmuxCmd,
     loadAvatarDataUrl,
     remoteConfigAtom,
+    resolveRemoteTmuxPath,
     setRemoteConfig,
     type AgentInfo,
 } from "@/app/store/agents";
@@ -219,7 +220,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         setLoading(true);
         try {
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+            const tmux = getTmuxCmd();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} ls"`
                 : `${tmux} ls`;
@@ -287,7 +288,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
             const agentName = info?.name ?? agentKey;
             const sessionName = agentKey.toLowerCase();
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+            const tmux = getTmuxCmd();
             const initScript = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} -t "${tmux} attach -t ${sessionName}"\n`
                 : `${tmux} attach -t ${sessionName}\n`;
@@ -311,7 +312,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         async (agentKey: string) => {
             const agentDir = `${getRepoBasePath()}/matilda/agent-${agentKey}`;
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+            const tmux = getTmuxCmd();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} new-session -d -s ${agentKey} -c \\"${agentDir}\\""`
                 : `${tmux} new-session -d -s ${agentKey} -c "${agentDir}"`;
@@ -324,7 +325,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     const handleSleep = React.useCallback(
         async (agentKey: string) => {
             const remote = getRemoteConfig();
-            const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+            const tmux = getTmuxCmd();
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} kill-session -t ${agentKey}"`
                 : `${tmux} kill-session -t ${agentKey}`;
@@ -336,7 +337,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleLaunchAll = React.useCallback(async () => {
         const remote = getRemoteConfig();
-        const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+        const tmux = getTmuxCmd();
         const stopped = agents.filter((a) => !a.session);
         for (const agent of stopped) {
             const agentDir = `${getRepoBasePath()}/matilda/agent-${agent.key}`;
@@ -350,7 +351,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleSleepAll = React.useCallback(async () => {
         const remote = getRemoteConfig();
-        const tmux = remote?.remoteTmuxPath ?? getTmuxPath();
+        const tmux = getTmuxCmd();
         const running = agents.filter((a) => a.session);
         for (const agent of running) {
             const cmd = remote?.remoteHost
@@ -374,17 +375,23 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     const [showRemotePanel, setShowRemotePanel] = React.useState(false);
     const [hostInput, setHostInput] = React.useState(remoteConfig.remoteHost ?? "");
     const [repoPathInput, setRepoPathInput] = React.useState(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
+    const [tmuxPathInput, setTmuxPathInput] = React.useState(remoteConfig.remoteTmuxPath ?? "");
     const isRemote = !!remoteConfig.remoteHost;
 
     // Sync inputs when config changes externally
     React.useEffect(() => {
         setHostInput(remoteConfig.remoteHost ?? "");
         setRepoPathInput(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
-    }, [remoteConfig.remoteHost, remoteConfig.repoBasePath]);
+        setTmuxPathInput(remoteConfig.remoteTmuxPath ?? "");
+    }, [remoteConfig.remoteHost, remoteConfig.repoBasePath, remoteConfig.remoteTmuxPath]);
 
     const saveHost = React.useCallback((value: string) => {
         const trimmed = value.trim();
         setRemoteConfig({ remoteHost: trimmed || null });
+        // Auto-detect remote tmux path when host is set
+        if (trimmed) {
+            resolveRemoteTmuxPath();
+        }
     }, []);
 
     const saveRepoPath = React.useCallback((value: string) => {
@@ -392,9 +399,15 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         setRemoteConfig({ repoBasePath: trimmed || null });
     }, []);
 
+    const saveTmuxPath = React.useCallback((value: string) => {
+        const trimmed = value.trim();
+        setRemoteConfig({ remoteTmuxPath: trimmed || null });
+    }, []);
+
     const clearRemote = React.useCallback(() => {
-        setRemoteConfig({ remoteHost: null });
+        setRemoteConfig({ remoteHost: null, remoteTmuxPath: null });
         setHostInput("");
+        setTmuxPathInput("");
     }, []);
 
     return (
@@ -470,6 +483,23 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                         onBlur={() => saveRepoPath(repoPathInput)}
                         onKeyDown={(e) => { if (e.key === "Enter") { saveRepoPath(repoPathInput); (e.target as HTMLInputElement).blur(); } }}
                         placeholder={DEFAULT_REPO_BASE}
+                        className="text-[11px] px-2 py-1 rounded"
+                        style={{
+                            background: "rgba(0,0,0,0.3)",
+                            color: "var(--main-text-color)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            outline: "none",
+                            width: "100%",
+                        }}
+                    />
+                    <label className="text-[10px] text-muted uppercase tracking-wider" style={{ marginTop: 4 }}>Remote Tmux Path</label>
+                    <input
+                        type="text"
+                        value={tmuxPathInput}
+                        onChange={(e) => setTmuxPathInput(e.target.value)}
+                        onBlur={() => saveTmuxPath(tmuxPathInput)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { saveTmuxPath(tmuxPathInput); (e.target as HTMLInputElement).blur(); } }}
+                        placeholder="/opt/homebrew/bin/tmux (auto-detected)"
                         className="text-[11px] px-2 py-1 rounded"
                         style={{
                             background: "rgba(0,0,0,0.3)",
