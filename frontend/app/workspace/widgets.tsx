@@ -253,7 +253,7 @@ const SettingsFloatingWindow = memo(
                             view: "waveconfig",
                         },
                     };
-                    createBlock(blockDef, false, true);
+                    createBlock(blockDef);
                     onClose();
                 },
             },

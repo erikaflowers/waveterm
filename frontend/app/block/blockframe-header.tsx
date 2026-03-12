@@ -20,7 +20,9 @@ import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { IconButton } from "@/element/iconbutton";
-import { NodeModel } from "@/layout/index";
+import { getLayoutModelForStaticTab, LayoutTreeActionType, NodeModel } from "@/layout/index";
+import type { LayoutTreeResizeNodeAction } from "@/layout/index";
+import { findNode, findParent } from "@/layout/lib/layoutNode";
 import * as util from "@/util/util";
 import { cn } from "@/util/util";
 import * as jotai from "jotai";
@@ -110,12 +112,80 @@ type HeaderEndIconsProps = {
     blockId: string;
 };
 
+const COLLAPSED_SIZE = 3; // percentage — just enough for the header bar
+
+async function toggleCollapseBlock(blockId: string, nodeId: string) {
+    const layoutModel = getLayoutModelForStaticTab();
+    if (!layoutModel) return;
+    const node = layoutModel.getNodeByBlockId(blockId);
+    if (!node) return;
+    const parent = findParent(layoutModel.treeState.rootNode, node.id);
+    // Can't collapse if there are no siblings (single pane)
+    if (!parent?.children || parent.children.length < 2) return;
+
+    // Read current collapsed state from block metadata
+    const blockOref = WOS.makeORef("block", blockId);
+    const blockAtom = WOS.getWaveObjectAtom<Block>(blockOref);
+    const blockData = globalStore.get(blockAtom);
+    const isCollapsed = blockData?.meta?.["frame:collapsed"] ?? false;
+
+    if (isCollapsed) {
+        // EXPAND: restore previous size
+        const prevSize = blockData?.meta?.["frame:prevsize"] ?? 50;
+        const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: prevSize }];
+        // Redistribute: take space proportionally from siblings
+        if (parent?.children) {
+            const siblings = parent.children.filter((c) => c.id !== node.id);
+            const currentTotal = siblings.reduce((sum, s) => sum + s.size, 0);
+            const newTotal = 100 - prevSize;
+            for (const sib of siblings) {
+                const ratio = currentTotal > 0 ? sib.size / currentTotal : 1 / siblings.length;
+                resizeOps.push({ nodeId: sib.id, size: ratio * newTotal });
+            }
+        }
+        const resizeAction: LayoutTreeResizeNodeAction = {
+            type: LayoutTreeActionType.ResizeNode,
+            resizeOperations: resizeOps,
+        };
+        layoutModel.treeReducer(resizeAction);
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: blockOref,
+            meta: { "frame:collapsed": false },
+        });
+    } else {
+        // COLLAPSE: save current size, shrink to minimum
+        const currentSize = node.size;
+        const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: COLLAPSED_SIZE }];
+        // Distribute freed space to siblings proportionally
+        if (parent?.children) {
+            const siblings = parent.children.filter((c) => c.id !== node.id);
+            const freedSpace = currentSize - COLLAPSED_SIZE;
+            const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
+            for (const sib of siblings) {
+                const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
+                resizeOps.push({ nodeId: sib.id, size: sib.size + ratio * freedSpace });
+            }
+        }
+        const resizeAction: LayoutTreeResizeNodeAction = {
+            type: LayoutTreeActionType.ResizeNode,
+            resizeOperations: resizeOps,
+        };
+        layoutModel.treeReducer(resizeAction);
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: blockOref,
+            meta: { "frame:collapsed": true, "frame:prevsize": currentSize },
+        });
+    }
+}
+
 const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndIconsProps) => {
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const isCollapsed = blockData?.meta?.["frame:collapsed"] ?? false;
 
     const endIconsElem: React.ReactElement[] = [];
 
@@ -152,6 +222,15 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
             />
         );
     }
+
+    // Collapse/expand toggle
+    const collapseDecl: IconButtonDecl = {
+        elemtype: "iconbutton",
+        icon: isCollapsed ? "chevron-down" : "chevron-up",
+        title: isCollapsed ? "Expand" : "Collapse",
+        click: () => toggleCollapseBlock(blockId, nodeModel.nodeId),
+    };
+    endIconsElem.push(<IconButton key="collapse" decl={collapseDecl} />);
 
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",
