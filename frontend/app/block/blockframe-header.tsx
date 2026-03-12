@@ -112,9 +112,10 @@ type HeaderEndIconsProps = {
     blockId: string;
 };
 
-const COLLAPSED_SIZE = 3; // percentage — just enough for the header bar
+const COLLAPSED_SIZE = 5; // percentage — just enough for the header bar
+const COLLAPSED_THRESHOLD = 8; // if size is at or below this, consider it collapsed
 
-async function toggleCollapseBlock(blockId: string, nodeId: string) {
+function toggleCollapseBlock(blockId: string, nodeId: string) {
     const layoutModel = getLayoutModelForStaticTab();
     if (!layoutModel) return;
     const node = layoutModel.getNodeByBlockId(blockId);
@@ -123,32 +124,33 @@ async function toggleCollapseBlock(blockId: string, nodeId: string) {
     // Can't collapse if there are no siblings (single pane)
     if (!parent?.children || parent.children.length < 2) return;
 
-    // Read current collapsed state from block metadata
+    // Determine collapsed state from actual node size (not async metadata)
+    const isCollapsed = node.size <= COLLAPSED_THRESHOLD;
     const blockOref = WOS.makeORef("block", blockId);
-    const blockAtom = WOS.getWaveObjectAtom<Block>(blockOref);
-    const blockData = globalStore.get(blockAtom);
-    const isCollapsed = blockData?.meta?.["frame:collapsed"] ?? false;
 
     if (isCollapsed) {
-        // EXPAND: restore previous size
-        const prevSize = blockData?.meta?.["frame:prevsize"] ?? 50;
-        const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: prevSize }];
-        // Redistribute: take space proportionally from siblings
-        if (parent?.children) {
-            const siblings = parent.children.filter((c) => c.id !== node.id);
-            const currentTotal = siblings.reduce((sum, s) => sum + s.size, 0);
-            const newTotal = 100 - prevSize;
-            for (const sib of siblings) {
-                const ratio = currentTotal > 0 ? sib.size / currentTotal : 1 / siblings.length;
-                resizeOps.push({ nodeId: sib.id, size: ratio * newTotal });
-            }
+        // EXPAND: restore previous size from metadata, or default to fair share
+        const blockAtom = WOS.getWaveObjectAtom<Block>(blockOref);
+        const blockData = globalStore.get(blockAtom);
+        const savedSize = blockData?.meta?.["frame:prevsize"];
+        // Validate: prevsize must be reasonable (> threshold, <= 95)
+        const restoreSize = (savedSize && savedSize > COLLAPSED_THRESHOLD && savedSize <= 95)
+            ? savedSize
+            : Math.floor(100 / parent.children.length);
+        const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: restoreSize }];
+        // Take space proportionally from siblings
+        const siblings = parent.children.filter((c) => c.id !== node.id);
+        const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
+        const newSiblingTotal = 100 - restoreSize;
+        for (const sib of siblings) {
+            const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
+            resizeOps.push({ nodeId: sib.id, size: ratio * newSiblingTotal });
         }
-        const resizeAction: LayoutTreeResizeNodeAction = {
+        layoutModel.treeReducer({
             type: LayoutTreeActionType.ResizeNode,
             resizeOperations: resizeOps,
-        };
-        layoutModel.treeReducer(resizeAction);
-        await RpcApi.SetMetaCommand(TabRpcClient, {
+        } as LayoutTreeResizeNodeAction);
+        RpcApi.SetMetaCommand(TabRpcClient, {
             oref: blockOref,
             meta: { "frame:collapsed": false },
         });
@@ -157,21 +159,18 @@ async function toggleCollapseBlock(blockId: string, nodeId: string) {
         const currentSize = node.size;
         const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: COLLAPSED_SIZE }];
         // Distribute freed space to siblings proportionally
-        if (parent?.children) {
-            const siblings = parent.children.filter((c) => c.id !== node.id);
-            const freedSpace = currentSize - COLLAPSED_SIZE;
-            const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
-            for (const sib of siblings) {
-                const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
-                resizeOps.push({ nodeId: sib.id, size: sib.size + ratio * freedSpace });
-            }
+        const siblings = parent.children.filter((c) => c.id !== node.id);
+        const freedSpace = currentSize - COLLAPSED_SIZE;
+        const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
+        for (const sib of siblings) {
+            const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
+            resizeOps.push({ nodeId: sib.id, size: sib.size + ratio * freedSpace });
         }
-        const resizeAction: LayoutTreeResizeNodeAction = {
+        layoutModel.treeReducer({
             type: LayoutTreeActionType.ResizeNode,
             resizeOperations: resizeOps,
-        };
-        layoutModel.treeReducer(resizeAction);
-        await RpcApi.SetMetaCommand(TabRpcClient, {
+        } as LayoutTreeResizeNodeAction);
+        RpcApi.SetMetaCommand(TabRpcClient, {
             oref: blockOref,
             meta: { "frame:collapsed": true, "frame:prevsize": currentSize },
         });
