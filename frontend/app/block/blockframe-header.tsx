@@ -23,6 +23,7 @@ import { IconButton } from "@/element/iconbutton";
 import { getLayoutModelForStaticTab, LayoutTreeActionType, NodeModel } from "@/layout/index";
 import type { LayoutTreeResizeNodeAction } from "@/layout/index";
 import { findNode, findParent } from "@/layout/lib/layoutNode";
+import { FlexDirection } from "@/layout/lib/types";
 import * as util from "@/util/util";
 import { cn } from "@/util/util";
 import * as jotai from "jotai";
@@ -123,28 +124,51 @@ function toggleCollapseBlock(blockId: string, nodeId: string) {
     const parent = findParent(layoutModel.treeState.rootNode, node.id);
     // Can't collapse if there are no siblings (single pane)
     if (!parent?.children || parent.children.length < 2) return;
+    // Only collapse in vertical (Column) layouts — horizontal would shrink width
+    if (parent.flexDirection !== FlexDirection.Column) return;
 
-    // Determine collapsed state from actual node size (not async metadata)
-    const isCollapsed = node.size <= COLLAPSED_THRESHOLD;
+    // Use metadata as source of truth — survives manual drag-resize
     const blockOref = WOS.makeORef("block", blockId);
+    const blockAtom = WOS.getWaveObjectAtom<Block>(blockOref);
+    const blockData = globalStore.get(blockAtom);
+    const isCollapsed = blockData?.meta?.["frame:collapsed"] ?? false;
+
+    // Split siblings into collapsed (frozen) and expandable — use metadata not size
+    const allSiblings = parent.children.filter((c) => c.id !== node.id);
+    const collapsedSiblings = allSiblings.filter((s) => {
+        const sibOref = WOS.makeORef("block", s.data?.blockId);
+        const sibAtom = WOS.getWaveObjectAtom<Block>(sibOref);
+        const sibData = globalStore.get(sibAtom);
+        return sibData?.meta?.["frame:collapsed"] ?? false;
+    });
+    const expandableSiblings = allSiblings.filter((s) => !collapsedSiblings.includes(s));
+    const collapsedTotal = collapsedSiblings.reduce((sum, s) => sum + s.size, 0);
 
     if (isCollapsed) {
         // EXPAND: restore previous size from metadata, or default to fair share
-        const blockAtom = WOS.getWaveObjectAtom<Block>(blockOref);
-        const blockData = globalStore.get(blockAtom);
         const savedSize = blockData?.meta?.["frame:prevsize"];
-        // Validate: prevsize must be reasonable (> threshold, <= 95)
         const restoreSize = (savedSize && savedSize > COLLAPSED_THRESHOLD && savedSize <= 95)
             ? savedSize
             : Math.floor(100 / parent.children.length);
         const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: restoreSize }];
-        // Take space proportionally from siblings
-        const siblings = parent.children.filter((c) => c.id !== node.id);
-        const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
-        const newSiblingTotal = 100 - restoreSize;
-        for (const sib of siblings) {
-            const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
-            resizeOps.push({ nodeId: sib.id, size: ratio * newSiblingTotal });
+        // Collapsed siblings stay frozen at their current size
+        for (const sib of collapsedSiblings) {
+            resizeOps.push({ nodeId: sib.id, size: sib.size });
+        }
+        // Only take space from expandable siblings
+        const expandableTotal = expandableSiblings.reduce((sum, s) => sum + s.size, 0);
+        const newExpandableTotal = 100 - restoreSize - collapsedTotal;
+        let allocated = restoreSize + collapsedTotal;
+        for (let i = 0; i < expandableSiblings.length; i++) {
+            const sib = expandableSiblings[i];
+            if (i === expandableSiblings.length - 1) {
+                resizeOps.push({ nodeId: sib.id, size: 100 - allocated });
+            } else {
+                const ratio = expandableTotal > 0 ? sib.size / expandableTotal : 1 / expandableSiblings.length;
+                const newSize = ratio * newExpandableTotal;
+                resizeOps.push({ nodeId: sib.id, size: newSize });
+                allocated += newSize;
+            }
         }
         layoutModel.treeReducer({
             type: LayoutTreeActionType.ResizeNode,
@@ -158,13 +182,24 @@ function toggleCollapseBlock(blockId: string, nodeId: string) {
         // COLLAPSE: save current size, shrink to minimum
         const currentSize = node.size;
         const resizeOps: { nodeId: string; size: number }[] = [{ nodeId: node.id, size: COLLAPSED_SIZE }];
-        // Distribute freed space to siblings proportionally
-        const siblings = parent.children.filter((c) => c.id !== node.id);
         const freedSpace = currentSize - COLLAPSED_SIZE;
-        const siblingTotal = siblings.reduce((sum, s) => sum + s.size, 0);
-        for (const sib of siblings) {
-            const ratio = siblingTotal > 0 ? sib.size / siblingTotal : 1 / siblings.length;
-            resizeOps.push({ nodeId: sib.id, size: sib.size + ratio * freedSpace });
+        // Collapsed siblings stay frozen at their current size
+        for (const sib of collapsedSiblings) {
+            resizeOps.push({ nodeId: sib.id, size: sib.size });
+        }
+        // Only give freed space to expandable siblings
+        const expandableTotal = expandableSiblings.reduce((sum, s) => sum + s.size, 0);
+        let allocated = COLLAPSED_SIZE + collapsedTotal;
+        for (let i = 0; i < expandableSiblings.length; i++) {
+            const sib = expandableSiblings[i];
+            if (i === expandableSiblings.length - 1) {
+                resizeOps.push({ nodeId: sib.id, size: 100 - allocated });
+            } else {
+                const ratio = expandableTotal > 0 ? sib.size / expandableTotal : 1 / expandableSiblings.length;
+                const newSize = sib.size + ratio * freedSpace;
+                resizeOps.push({ nodeId: sib.id, size: newSize });
+                allocated += newSize;
+            }
         }
         layoutModel.treeReducer({
             type: LayoutTreeActionType.ResizeNode,
@@ -222,14 +257,27 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
         );
     }
 
-    // Collapse/expand toggle
-    const collapseDecl: IconButtonDecl = {
-        elemtype: "iconbutton",
-        icon: isCollapsed ? "chevron-down" : "chevron-up",
-        title: isCollapsed ? "Expand" : "Collapse",
-        click: () => toggleCollapseBlock(blockId, nodeModel.nodeId),
-    };
-    endIconsElem.push(<IconButton key="collapse" decl={collapseDecl} />);
+    // Collapse/expand toggle — only in vertical layouts with siblings
+    const canCollapse = React.useMemo(() => {
+        const layoutModel = getLayoutModelForStaticTab();
+        if (!layoutModel) return false;
+        const node = layoutModel.getNodeByBlockId(blockId);
+        if (!node) return false;
+        const parent = findParent(layoutModel.treeState.rootNode, node.id);
+        if (!parent?.children || parent.children.length < 2) return false;
+        if (parent.flexDirection !== FlexDirection.Column) return false;
+        return true;
+    }, [blockId, numLeafs]);
+
+    if (canCollapse) {
+        const collapseDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: isCollapsed ? "chevron-right" : "chevron-down",
+            title: isCollapsed ? "Expand" : "Collapse",
+            click: () => toggleCollapseBlock(blockId, nodeModel.nodeId),
+        };
+        endIconsElem.push(<IconButton key="collapse" decl={collapseDecl} />);
+    }
 
     const closeDecl: IconButtonDecl = {
         elemtype: "iconbutton",

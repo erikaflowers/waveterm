@@ -55,7 +55,9 @@ const ChangeAgentBlockModal = React.memo(
 
         const changeAgent = React.useCallback(
             async (agentName: string) => {
+                // If re-selecting the same agent, just force reconnect (fixes broken pipe)
                 if (agentName === currentAgent) {
+                    await forceRestartWithAgent(blockId, agentName || null);
                     return;
                 }
 

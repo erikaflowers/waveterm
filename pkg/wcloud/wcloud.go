@@ -75,7 +75,7 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 		return nil
 	}
 	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
-		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+		log.Printf("[warning] invalid %s, %s not set or invalid (continuing anyway)", debugName, varName)
 	}
 	return nil
 }
@@ -84,9 +84,8 @@ func checkWSEndpointVar(endpoint string, debugName string, varName string) error
 	if !wavebase.IsDevMode() {
 		return nil
 	}
-	log.Printf("checking endpoint %q\n", endpoint)
 	if endpoint == "" || !strings.HasPrefix(endpoint, "wss://") {
-		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+		log.Printf("[warning] invalid %s, %s not set or invalid (continuing anyway)", debugName, varName)
 	}
 	return nil
 }

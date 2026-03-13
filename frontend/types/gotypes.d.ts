@@ -1043,8 +1043,6 @@ declare global {
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
-        "frame:collapsed"?: boolean;
-        "frame:prevsize"?: number;
         "cmd:*"?: boolean;
         cmd?: string;
         "cmd:interactive"?: boolean;

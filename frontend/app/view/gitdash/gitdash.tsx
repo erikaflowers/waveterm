@@ -251,10 +251,14 @@ const RepoRow = React.memo(
         repo,
         onTerminal,
         onOpen,
+        onFetch,
+        onPull,
     }: {
         repo: RepoInfo;
         onTerminal: (path: string) => void;
         onOpen: (path: string) => void;
+        onFetch: (path: string) => void;
+        onPull: (path: string) => void;
     }) => {
         const [hovered, setHovered] = React.useState(false);
 
@@ -327,7 +331,7 @@ const RepoRow = React.memo(
                         </span>
                     </div>
 
-                    {/* Health */}
+                    {/* Health — commented out, redundant with status/behind/dirty indicators
                     <div
                         style={{ flex: "1.5 1 0", minWidth: 0 }}
                         className="flex items-center gap-1 flex-wrap"
@@ -340,37 +344,64 @@ const RepoRow = React.memo(
                             repo.health.map((flag) => <HealthBadge key={flag} flag={flag} />)
                         )}
                     </div>
+                    */}
 
-                    {/* Actions (visible on hover) */}
+                    {/* Actions */}
                     <div
-                        className="flex gap-1 flex-shrink-0"
-                        style={{ width: 56, opacity: hovered ? 1 : 0, transition: "opacity 0.15s" }}
+                        className="flex items-center gap-1 flex-shrink-0"
+                        style={{ width: 100 }}
                     >
                         <button
-                            onClick={() => onTerminal(repo.path)}
+                            onClick={() => onFetch(repo.path)}
                             className="px-1.5 py-0.5 text-[10px] rounded"
                             style={{
                                 background: "rgba(255,255,255,0.08)",
-                                color: "var(--main-text-color)",
-                                border: "1px solid rgba(255,255,255,0.15)",
+                                color: "var(--secondary-text-color)",
+                                border: "1px solid rgba(255,255,255,0.12)",
                                 cursor: "pointer",
                             }}
-                            title={`Open terminal in ${repo.name}`}
+                            title={`Fetch ${repo.name}`}
                         >
-                            <i className="fa-sharp fa-solid fa-terminal" />
+                            <i className="fa-sharp fa-solid fa-cloud-arrow-down" />
+                        </button>
+                        <button
+                            onClick={() => onPull(repo.path)}
+                            className="px-1.5 py-0.5 text-[10px] rounded"
+                            style={{
+                                background: "rgba(255,255,255,0.08)",
+                                color: "var(--secondary-text-color)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                cursor: "pointer",
+                            }}
+                            title={`Pull ${repo.name}`}
+                        >
+                            <i className="fa-sharp fa-solid fa-arrow-down-to-line" />
                         </button>
                         <button
                             onClick={() => onOpen(repo.path)}
                             className="px-1.5 py-0.5 text-[10px] rounded"
                             style={{
                                 background: "rgba(255,255,255,0.08)",
-                                color: "var(--main-text-color)",
-                                border: "1px solid rgba(255,255,255,0.15)",
+                                color: "var(--secondary-text-color)",
+                                border: "1px solid rgba(255,255,255,0.12)",
                                 cursor: "pointer",
                             }}
                             title={`Open ${repo.name} in Finder`}
                         >
                             <i className="fa-sharp fa-solid fa-folder-open" />
+                        </button>
+                        <button
+                            onClick={() => onTerminal(repo.path)}
+                            className="px-1.5 py-0.5 text-[10px] rounded"
+                            style={{
+                                background: "rgba(255,255,255,0.08)",
+                                color: "var(--secondary-text-color)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                cursor: "pointer",
+                            }}
+                            title={`Open terminal in ${repo.name}`}
+                        >
+                            <i className="fa-sharp fa-solid fa-terminal" />
                         </button>
                     </div>
                 </div>
@@ -494,6 +525,24 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
         await getApi().execCommand(`open "${repoPath}"`);
     }, []);
 
+    const handleFetch = React.useCallback(async (repoPath: string) => {
+        try {
+            await getApi().execCommand(`git -C "${repoPath}" fetch --all --quiet 2>/dev/null`);
+            await refreshRepos();
+        } catch (e) {
+            console.error("Failed to fetch:", repoPath, e);
+        }
+    }, [refreshRepos]);
+
+    const handlePull = React.useCallback(async (repoPath: string) => {
+        try {
+            await getApi().execCommand(`git -C "${repoPath}" pull --quiet 2>/dev/null`);
+            await refreshRepos();
+        } catch (e) {
+            console.error("Failed to pull:", repoPath, e);
+        }
+    }, [refreshRepos]);
+
     // Summary stats
     const dirtyCount = repos.filter((r) => r.dirtyCount > 0).length;
     const unpushedCount = repos.filter((r) => r.unpushedCount > 0).length;
@@ -556,10 +605,16 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
                 <div style={{ flex: "1.2 1 0", minWidth: 0 }}>
                     <SortHeader label="Ago" sortKey="ago" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
                 </div>
+                {/* Health header — commented out
                 <div style={{ flex: "1.5 1 0", minWidth: 0 }}>
                     <SortHeader label="Health" sortKey="health" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
                 </div>
-                <div style={{ width: 56 }} />
+                */}
+                <div style={{ width: 100 }}>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--secondary-text-color)" }}>
+                        Actions
+                    </span>
+                </div>
             </div>
 
             {/* Scrollable repo list */}
@@ -578,6 +633,8 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
                         repo={repo}
                         onTerminal={handleTerminal}
                         onOpen={handleOpen}
+                        onFetch={handleFetch}
+                        onPull={handlePull}
                     />
                 ))}
             </div>
