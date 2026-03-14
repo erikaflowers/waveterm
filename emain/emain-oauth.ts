@@ -11,21 +11,54 @@ import * as os from "os";
 import { getWaveConfigDir } from "./emain-platform";
 import { focusedWaveWindow } from "./emain-window";
 
-// Desktop OAuth Client credentials loaded from local config (not committed)
+const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+
+/**
+ * Read cloud sync config from agent-preferences.json _global key.
+ * All cloud sync endpoints and OAuth credentials are user preferences — not hardcoded.
+ */
+function loadCloudSyncConfig(): { syncUrl: string; devicesUrl: string; clientId: string; clientSecret: string } {
+    const prefsPath = path.join(getWaveConfigDir(), "agent-preferences.json");
+    try {
+        const raw = fs.readFileSync(prefsPath, "utf-8");
+        const prefs = JSON.parse(raw);
+        const global = prefs["_global"] ?? {};
+        return {
+            syncUrl: global["cloudSyncUrl"] ?? "",
+            devicesUrl: global["cloudDevicesUrl"] ?? "",
+            clientId: global["cloudOAuthClientId"] ?? "",
+            clientSecret: global["cloudOAuthClientSecret"] ?? "",
+        };
+    } catch {
+        return { syncUrl: "", devicesUrl: "", clientId: "", clientSecret: "" };
+    }
+}
+
+// Backward compat — loads from prefs now, falls back to file for migration
 function loadOAuthCredentials(): { clientId: string; clientSecret: string } {
+    const config = loadCloudSyncConfig();
+    if (config.clientId && config.clientSecret) {
+        return { clientId: config.clientId, clientSecret: config.clientSecret };
+    }
+    // Fallback: try legacy oauth-credentials.json file
     const credPath = path.join(getWaveConfigDir(), "oauth-credentials.json");
     try {
         const raw = fs.readFileSync(credPath, "utf-8");
         const creds = JSON.parse(raw);
         return { clientId: creds.client_id, clientSecret: creds.client_secret };
     } catch {
-        throw new Error(`OAuth credentials not found. Create ${credPath} with client_id and client_secret.`);
+        throw new Error("Cloud sync not configured. Set OAuth Client ID and Secret in Settings → Terminus.");
     }
 }
-const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const KESTRIS_SYNC_URL = "https://kestris.ai/api/terminus/sync";
-const KESTRIS_DEVICES_URL = "https://kestris.ai/api/terminus/devices";
+
+function getCloudSyncUrl(): string {
+    return loadCloudSyncConfig().syncUrl;
+}
+
+function getCloudDevicesUrl(): string {
+    return loadCloudSyncConfig().devicesUrl;
+}
 
 export type AuthState = {
     email: string;
@@ -315,13 +348,17 @@ function kestrisRequest(
 }
 
 /**
- * Pull all synced configs from Kestris cloud.
+ * Pull all synced configs from cloud.
  */
 export async function pullConfigs(auth: AuthState, machineId: string): Promise<{
     configs: Record<string, any>;
     devices: any[];
     updated_at: string | null;
 }> {
+    const syncUrl = getCloudSyncUrl();
+    if (!syncUrl) {
+        throw new Error("Cloud sync URL not configured. Set it in Settings → Terminus.");
+    }
     const hostname = os.hostname();
     const platform = process.platform;
     const params = new URLSearchParams({
@@ -329,21 +366,25 @@ export async function pullConfigs(auth: AuthState, machineId: string): Promise<{
         device_name: hostname,
         os: platform,
     });
-    const url = `${KESTRIS_SYNC_URL}?${params.toString()}`;
+    const url = `${syncUrl}?${params.toString()}`;
     return kestrisRequest(url, "GET", auth.id_token);
 }
 
 /**
- * Push local configs to Kestris cloud.
+ * Push local configs to cloud.
  */
 export async function pushConfigs(
     auth: AuthState,
     machineId: string,
     configs: Record<string, any>
 ): Promise<{ ok: boolean; updated_at: string }> {
+    const syncUrl = getCloudSyncUrl();
+    if (!syncUrl) {
+        throw new Error("Cloud sync URL not configured. Set it in Settings → Terminus.");
+    }
     const hostname = os.hostname();
     const platform = process.platform;
-    return kestrisRequest(KESTRIS_SYNC_URL, "POST", auth.id_token, {
+    return kestrisRequest(syncUrl, "POST", auth.id_token, {
         configs,
         machine_id: machineId,
         device_name: hostname,
@@ -352,8 +393,12 @@ export async function pushConfigs(
 }
 
 /**
- * Get list of registered devices from Kestris cloud.
+ * Get list of registered devices from cloud.
  */
 export async function getDevices(auth: AuthState): Promise<{ devices: any[] }> {
-    return kestrisRequest(KESTRIS_DEVICES_URL, "GET", auth.id_token);
+    const devicesUrl = getCloudDevicesUrl();
+    if (!devicesUrl) {
+        throw new Error("Cloud devices URL not configured. Set it in Settings → Terminus.");
+    }
+    return kestrisRequest(devicesUrl, "GET", auth.id_token);
 }

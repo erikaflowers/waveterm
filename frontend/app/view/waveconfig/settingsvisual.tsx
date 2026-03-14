@@ -628,6 +628,35 @@ const TerminusSection = memo(() => {
                 onChange={(v) => updateField("plausibleSiteId", v)}
                 placeholder="example.com"
             />
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "8px 0" }} />
+            <TextSetting
+                label="Cloud Sync URL"
+                description="API endpoint for pushing/pulling synced settings"
+                value={config.cloudSyncUrl ?? ""}
+                onChange={(v) => updateField("cloudSyncUrl", v)}
+                placeholder="https://yourapi.com/api/terminus/sync"
+            />
+            <TextSetting
+                label="Cloud Devices URL"
+                description="API endpoint for listing synced devices"
+                value={config.cloudDevicesUrl ?? ""}
+                onChange={(v) => updateField("cloudDevicesUrl", v)}
+                placeholder="https://yourapi.com/api/terminus/devices"
+            />
+            <SecretSetting
+                label="Cloud OAuth Client ID"
+                description="Google OAuth client ID for cloud sync login"
+                value={config.cloudOAuthClientId ?? ""}
+                onChange={(v) => updateField("cloudOAuthClientId", v)}
+                placeholder="your-client-id.apps.googleusercontent.com"
+            />
+            <SecretSetting
+                label="Cloud OAuth Client Secret"
+                description="Google OAuth client secret for cloud sync login"
+                value={config.cloudOAuthClientSecret ?? ""}
+                onChange={(v) => updateField("cloudOAuthClientSecret", v)}
+                placeholder="your-client-secret"
+            />
         </SettingsSection>
     );
 });

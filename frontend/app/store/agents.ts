@@ -24,6 +24,10 @@ interface GlobalConfig {
     githubOrg: string | null;
     plausibleApiKey: string | null;
     plausibleSiteId: string | null;
+    cloudSyncUrl: string | null;
+    cloudDevicesUrl: string | null;
+    cloudOAuthClientId: string | null;
+    cloudOAuthClientSecret: string | null;
 }
 
 const globalConfigAtom = atom<GlobalConfig>({
@@ -34,6 +38,10 @@ const globalConfigAtom = atom<GlobalConfig>({
     githubOrg: null,
     plausibleApiKey: null,
     plausibleSiteId: null,
+    cloudSyncUrl: null,
+    cloudDevicesUrl: null,
+    cloudOAuthClientId: null,
+    cloudOAuthClientSecret: null,
 });
 
 // Agent color table — crew manifest
@@ -168,6 +176,10 @@ async function loadAgentPreferences(): Promise<void> {
         githubOrg: globalPrefs["githubOrg"] ?? null,
         plausibleApiKey: globalPrefs["plausibleApiKey"] ?? null,
         plausibleSiteId: globalPrefs["plausibleSiteId"] ?? null,
+        cloudSyncUrl: globalPrefs["cloudSyncUrl"] ?? null,
+        cloudDevicesUrl: globalPrefs["cloudDevicesUrl"] ?? null,
+        cloudOAuthClientId: globalPrefs["cloudOAuthClientId"] ?? null,
+        cloudOAuthClientSecret: globalPrefs["cloudOAuthClientSecret"] ?? null,
     });
     prefsLoaded = true;
 }
@@ -231,6 +243,16 @@ function getPlausibleConfig(): { apiKey: string; siteId: string } {
     };
 }
 
+function getCloudSyncConfig(): { syncUrl: string; devicesUrl: string; clientId: string; clientSecret: string } {
+    const config = globalStore.get(globalConfigAtom);
+    return {
+        syncUrl: config.cloudSyncUrl ?? "",
+        devicesUrl: config.cloudDevicesUrl ?? "",
+        clientId: config.cloudOAuthClientId ?? "",
+        clientSecret: config.cloudOAuthClientSecret ?? "",
+    };
+}
+
 async function setGlobalConfig(partial: Partial<GlobalConfig>): Promise<void> {
     const current = globalStore.get(globalConfigAtom);
     const updated: GlobalConfig = { ...current, ...partial };
@@ -247,6 +269,7 @@ async function setGlobalConfig(partial: Partial<GlobalConfig>): Promise<void> {
     const keys: (keyof GlobalConfig)[] = [
         "remoteHost", "remoteTmuxPath", "repoBasePath",
         "agentsPath", "githubOrg", "plausibleApiKey", "plausibleSiteId",
+        "cloudSyncUrl", "cloudDevicesUrl", "cloudOAuthClientId", "cloudOAuthClientSecret",
     ];
     for (const key of keys) {
         if (updated[key] != null) {
@@ -385,6 +408,7 @@ export {
     getGithubOrg,
     getGlobalConfig,
     getAgentsPath,
+    getCloudSyncConfig,
     getPlausibleConfig,
     getRemoteConfig,
     getRemoteTmuxPath,
