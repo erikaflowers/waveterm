@@ -44,11 +44,18 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned
 - ✅ AI section hidden until in-app AI plan exists
 - ✅ Cloud sync for layout/settings (machine-specific paths excluded)
 
+### Cloud Sync
+- ✅ Cloud sync BYOE — all endpoints and OAuth credentials are user preferences
+- ✅ Cloud sync fields in Settings panel (Sync URL, Devices URL, OAuth ID, OAuth Secret)
+- ✅ Electron main process reads prefs from agent-preferences.json (no hardcoded URLs)
+- ✅ Backward compat with legacy oauth-credentials.json for migration
+
 ### Build & Infra
 - ✅ Packaged app builds (ARM64 + x64 DMG)
 - ✅ Terminus cube icon (dock, app bundle, DMG)
 - ✅ wcloud endpoint warning instead of crash in dev mode
 - ✅ README, BUILD, CONTRIBUTING rewritten for Terminus
+- ✅ Marketing site at terminus.zerovector.design (site/ directory, Netlify deploy)
 
 ---
 

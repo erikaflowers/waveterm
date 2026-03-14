@@ -107,6 +107,73 @@ function decodeJwtPayload(token: string): any {
 }
 
 /**
+ * Use stored refresh_token to get fresh id_token + access_token from Google.
+ * Updates auth.json on success. Returns the updated AuthState.
+ */
+export async function refreshTokenIfNeeded(auth: AuthState): Promise<AuthState> {
+    // 5-minute buffer before expiry
+    if (auth.token_expiry > Date.now() + 5 * 60 * 1000) {
+        return auth; // still valid
+    }
+    if (!auth.refresh_token) {
+        throw new Error("Token expired and no refresh_token available. Please sign in again.");
+    }
+    const creds = loadOAuthCredentials();
+    const postData = new URLSearchParams({
+        client_id: creds.clientId,
+        client_secret: creds.clientSecret,
+        refresh_token: auth.refresh_token,
+        grant_type: "refresh_token",
+    }).toString();
+
+    const tokens = await new Promise<{ id_token: string; access_token: string; expires_in: number }>((resolve, reject) => {
+        const url = new URL(GOOGLE_TOKEN_URL);
+        const options: https.RequestOptions = {
+            hostname: url.hostname,
+            path: url.pathname,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Length": Buffer.byteLength(postData),
+            },
+        };
+        const req = https.request(options, (res) => {
+            let body = "";
+            res.on("data", (chunk) => (body += chunk));
+            res.on("end", () => {
+                if (res.statusCode !== 200) {
+                    reject(new Error(`Token refresh failed (${res.statusCode}): ${body}`));
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(body));
+                } catch (e) {
+                    reject(new Error(`Failed to parse refresh response: ${body}`));
+                }
+            });
+        });
+        req.on("error", reject);
+        req.write(postData);
+        req.end();
+    });
+
+    // Google doesn't return a new refresh_token on refresh — keep the existing one
+    const jwt = decodeJwtPayload(tokens.id_token);
+    const updated: AuthState = {
+        ...auth,
+        email: jwt.email,
+        name: jwt.name || jwt.email,
+        picture: jwt.picture || auth.picture,
+        id_token: tokens.id_token,
+        access_token: tokens.access_token,
+        token_expiry: Date.now() + tokens.expires_in * 1000,
+    };
+    writeAuthState(updated);
+    console.log("cloud sync: refreshed expired token");
+    return updated;
+}
+
+/**
  * Exchange authorization code for tokens via Google's token endpoint.
  * Uses Node's built-in https module to avoid adding dependencies.
  */

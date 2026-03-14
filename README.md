@@ -48,13 +48,27 @@ All user-specific paths and credentials are configurable in Settings (no hardcod
 - **Agents Path** — path to agent repo (avatars, crew working directories)
 - **GitHub Org** — for commit links in fleet log
 - **Plausible API Key / Site ID** — for web stats panel
+- **Cloud Sync URL / Devices URL** — for cross-machine sync (BYOE)
+- **Cloud OAuth Client ID / Secret** — Google OAuth credentials for cloud sync
 - Path fields include native OS folder picker
 
 Preferences are stored in `~/.config/terminus/agent-preferences.json` (prod) or `~/.config/terminus-dev/agent-preferences.json` (dev).
 
-### Cloud Sync
+### Cloud Sync (BYOE)
 
-Optional Google sign-in syncs layout settings, connections, and widgets across machines. Machine-specific paths (repo base, agents path) are intentionally excluded from sync.
+Terminus supports optional cloud sync to keep layout, settings, and widget config in sync across machines. Cloud sync is fully **Bring Your Own Endpoint** — all API URLs and OAuth credentials are user-configurable in Settings. No backend is baked in.
+
+To enable cloud sync:
+1. Deploy your own sync backend (or use a hosted one)
+2. Set up a Google OAuth 2.0 client (console.cloud.google.com)
+3. Fill in the four cloud sync fields in Settings → Terminus:
+   - **Cloud Sync URL** — your sync API endpoint
+   - **Cloud Devices URL** — your devices API endpoint
+   - **Cloud OAuth Client ID** — Google OAuth client ID
+   - **Cloud OAuth Client Secret** — Google OAuth client secret
+4. Sign in via the Cloud Sync section in Settings
+
+Machine-specific paths (repo base, agents path) are intentionally excluded from sync.
 
 ---
 
@@ -112,6 +126,7 @@ Output: `make/Terminus-darwin-arm64-0.14.1.dmg` and `make/Terminus-darwin-x64-0.
 | `frontend/app/block/block.tsx` | Block registry (view type -> ViewModel) |
 | `pkg/wconfig/defaultconfig/widgets.json` | Sidebar widget definitions |
 | `emain/emain-ipc.ts` | Electron IPC handlers |
+| `emain/emain-oauth.ts` | Cloud sync OAuth + BYOE endpoint config |
 
 ---
 
@@ -120,6 +135,12 @@ Output: `make/Terminus-darwin-arm64-0.14.1.dmg` and `make/Terminus-darwin-x64-0.
 Terminus is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm), an open-source terminal for macOS, Linux, and Windows. All upstream features — SSH sessions, file preview, drag-and-drop blocks, `wsh` CLI — are preserved.
 
 Forked at Wave v0.14.1-beta.0. Last synced: v0.14.1.
+
+---
+
+## Marketing Site
+
+The marketing site and documentation live at [terminus.zerovector.design](https://terminus.zerovector.design). Source is in the `site/` directory.
 
 ---
 

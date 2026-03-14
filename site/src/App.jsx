@@ -518,8 +518,8 @@ function App() {
           </h2>
           <div className="terminal-demo">
             <TerminalWindow title="zsh — terminus">
-              <div className="term-line"><span className="term-prompt">$</span> <TypedText text="brew install --cask terminus" delay={800} speed={35} /></div>
-              <div className="term-line term-fade-1"><span className="term-muted"># Or download the DMG from GitHub Releases</span></div>
+              <div className="term-line"><span className="term-prompt">$</span> <TypedText text="open Terminus-darwin-arm64.dmg" delay={800} speed={35} /></div>
+              <div className="term-line term-fade-1"><span className="term-muted"># Download from GitHub Releases → drag to /Applications</span></div>
               <div className="term-line term-fade-2"><span className="term-prompt">$</span> <span className="term-cmd">terminus</span></div>
               <div className="term-line term-fade-3"><span className="term-output">Terminus v1.0.0-beta.1</span></div>
               <div className="term-line term-fade-4"><span className="term-output">Loading crew manifest... agents ready</span></div>

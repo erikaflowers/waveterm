@@ -149,7 +149,7 @@ Terminus-darwin-x64-0.14.1.dmg     # Intel Macs`}</pre>
           <section id="settings" className="docs-section">
             <h2>Settings & Preferences</h2>
             <p>
-              Open Settings (gear icon or <code>Cmd+,</code>). The <strong>Terminus</strong> section has five fields:
+              Open Settings (gear icon or <code>Cmd+,</code>). The <strong>Terminus</strong> section contains these fields:
             </p>
             <div className="settings-table">
               <div className="settings-row">
@@ -171,6 +171,22 @@ Terminus-darwin-x64-0.14.1.dmg     # Intel Macs`}</pre>
               <div className="settings-row">
                 <div className="settings-key">Plausible API Key</div>
                 <div className="settings-val">Your Plausible API key for the Web Stats panel. Get one from your Plausible account settings.</div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-key">Cloud Sync URL</div>
+                <div className="settings-val">Your cloud sync API endpoint. Required for cross-machine sync. Leave blank to disable cloud sync entirely.</div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-key">Cloud Devices URL</div>
+                <div className="settings-val">Your devices registry endpoint. Used to track which machines are syncing.</div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-key">Cloud OAuth Client ID</div>
+                <div className="settings-val">Google OAuth 2.0 Client ID. Create one at <em>console.cloud.google.com → Credentials</em>.</div>
+              </div>
+              <div className="settings-row">
+                <div className="settings-key">Cloud OAuth Client Secret</div>
+                <div className="settings-val">Google OAuth 2.0 Client Secret. Paired with the Client ID above.</div>
               </div>
             </div>
             <p>
@@ -440,29 +456,44 @@ Remote tmux Path: /usr/bin/tmux  # Path to tmux on remote`}</pre>
           {/* ── Cloud Sync ── */}
           <section id="cloud-sync" className="docs-section">
             <h2>Cloud Sync</h2>
+            <div className="callout callout-experimental">
+              <div className="callout-icon">*</div>
+              <div>
+                <strong>Bring Your Own Endpoint.</strong> Cloud sync is fully BYOE — no backend is baked into Terminus.
+                You provide your own sync API and Google OAuth credentials.
+              </div>
+            </div>
             <p>
-              Terminus supports syncing your layout, settings, and widget configuration across machines
-              via Google sign-in. This is inherited from Wave Terminal's cloud sync system.
+              Terminus can sync layout, settings, and widget configuration across machines
+              via Google sign-in. All API endpoints and OAuth credentials are user-configurable —
+              nothing is hardcoded.
             </p>
+            <h3>Setup</h3>
+            <ol>
+              <li>Deploy a sync backend (two endpoints: sync and devices)</li>
+              <li>Create a Google OAuth 2.0 client at <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">console.cloud.google.com</a></li>
+              <li>Add <code>http://127.0.0.1</code> as an authorized redirect URI (Terminus uses a loopback server for the OAuth callback)</li>
+              <li>In Terminus Settings → Terminus, fill in all four Cloud Sync fields</li>
+              <li>Click Sign In in the Cloud Sync section of Settings</li>
+            </ol>
             <h3>What syncs</h3>
             <ul>
               <li><code>settings.json</code> — app preferences and theme</li>
               <li><code>connections.json</code> — saved SSH connections</li>
               <li><code>widgets.json</code> — sidebar widget configuration</li>
-              <li><code>agents.json</code> — agent definitions</li>
             </ul>
             <h3>What does NOT sync</h3>
             <ul>
               <li><code>agent-preferences.json</code> — machine-specific paths (Repo Base Path, Agents Path, etc.)</li>
               <li>Local tmux sessions</li>
               <li>The Fleet Log SQLite database</li>
+              <li>Terminal content or agent conversations</li>
             </ul>
-            <div className="callout callout-warning">
-              <div className="callout-icon">!</div>
+            <div className="callout callout-info">
+              <div className="callout-icon">i</div>
               <div>
-                <strong>Note on cloud sync backend:</strong> Cloud sync currently connects to a hosted backend.
-                This feature is functional but may change in future releases as we evaluate self-hosted options.
-                Your data is limited to layout and settings — no terminal content or agent conversations are synced.
+                If the four Cloud Sync fields are left blank, cloud sync is completely disabled. No network
+                requests are made and the Sign In button won't appear. This is the default state for new installs.
               </div>
             </div>
           </section>

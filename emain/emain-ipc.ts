@@ -24,7 +24,7 @@ import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-p
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
-import { startOAuthLogin, readAuthState, writeAuthState, clearAuthState, pullConfigs, pushConfigs, getDevices } from "./emain-oauth";
+import { startOAuthLogin, readAuthState, writeAuthState, clearAuthState, pullConfigs, pushConfigs, getDevices, refreshTokenIfNeeded } from "./emain-oauth";
 import { getWaveConfigDir } from "./emain-platform";
 import { createNewWaveWindow, focusedWaveWindow, getClientId, getWaveWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
@@ -592,11 +592,12 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("terminus-sync-pull", async () => {
-        const auth = readAuthState();
+        let auth = readAuthState();
         if (!auth) {
             return { ok: false, error: "Not logged in" };
         }
         try {
+            auth = await refreshTokenIfNeeded(auth);
             const machineId = await getClientId();
             const result = await pullConfigs(auth, machineId);
             // Write pulled configs to disk so the filewatcher picks them up
@@ -615,11 +616,12 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("terminus-sync-push", async (_event, configs: Record<string, any>) => {
-        const auth = readAuthState();
+        let auth = readAuthState();
         if (!auth) {
             return { ok: false, error: "Not logged in" };
         }
         try {
+            auth = await refreshTokenIfNeeded(auth);
             const machineId = await getClientId();
             const result = await pushConfigs(auth, machineId, configs);
             return { ok: true, ...result };
@@ -629,11 +631,12 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("terminus-devices", async () => {
-        const auth = readAuthState();
+        let auth = readAuthState();
         if (!auth) {
             return { ok: false, error: "Not logged in" };
         }
         try {
+            auth = await refreshTokenIfNeeded(auth);
             const result = await getDevices(auth);
             return { ok: true, ...result };
         } catch (e) {
