@@ -16,20 +16,27 @@ interface AgentInfo {
     defaultTheme: string;
 }
 
-interface RemoteConfig {
+interface GlobalConfig {
     remoteHost: string | null;
     remoteTmuxPath: string | null;
     repoBasePath: string | null;
+    agentsPath: string | null;
+    githubOrg: string | null;
+    plausibleApiKey: string | null;
+    plausibleSiteId: string | null;
 }
 
-const DEFAULT_REPO_BASE = "/Users/erikflowers/claude projects";
+const globalConfigAtom = atom<GlobalConfig>({
+    remoteHost: null,
+    remoteTmuxPath: null,
+    repoBasePath: null,
+    agentsPath: null,
+    githubOrg: null,
+    plausibleApiKey: null,
+    plausibleSiteId: null,
+});
 
-const remoteConfigAtom = atom<RemoteConfig>({ remoteHost: null, remoteTmuxPath: null, repoBasePath: null });
-
-// Base path for Matilda agent directories
-const MATILDA_BASE = "/Users/erikflowers/claude projects/matilda";
-
-// Agent color table — hardcoded from the Matilda crew manifest
+// Agent color table — crew manifest
 const AgentColorTable: Record<string, { color: string; role: string }> = {
     julian: { color: "#6366F1", role: "Orchestrator" },
     heavy: { color: "#22C55E", role: "Frontend" },
@@ -65,8 +72,10 @@ function getDefaultTheme(name: string): string {
 }
 
 function getAvatarPath(name: string): string {
+    const agentsDir = getAgentsPath();
+    if (!agentsDir) return "";
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-    return `${MATILDA_BASE}/portraits/${capitalized}.jpg`;
+    return `${agentsDir}/portraits/${capitalized}.jpg`;
 }
 
 function buildStaticAgentList(): AgentInfo[] {
@@ -144,12 +153,16 @@ async function loadAgentPreferences(): Promise<void> {
     } catch {
         // File doesn't exist yet or parse error — start with empty prefs
     }
-    // Populate remote config from _global key
+    // Populate global config from _global key
     const globalPrefs = agentPrefsMap.get("_global") ?? {};
-    globalStore.set(remoteConfigAtom, {
+    globalStore.set(globalConfigAtom, {
         remoteHost: globalPrefs["remoteHost"] ?? null,
         remoteTmuxPath: globalPrefs["remoteTmuxPath"] ?? null,
         repoBasePath: globalPrefs["repoBasePath"] ?? null,
+        agentsPath: globalPrefs["agentsPath"] ?? null,
+        githubOrg: globalPrefs["githubOrg"] ?? null,
+        plausibleApiKey: globalPrefs["plausibleApiKey"] ?? null,
+        plausibleSiteId: globalPrefs["plausibleSiteId"] ?? null,
     });
     prefsLoaded = true;
 }
@@ -181,19 +194,42 @@ async function setAgentPref(agentName: string, key: string, value: string | null
     await saveAgentPreferences();
 }
 
-function getRemoteConfig(): RemoteConfig {
-    return globalStore.get(remoteConfigAtom);
+function getGlobalConfig(): GlobalConfig {
+    return globalStore.get(globalConfigAtom);
+}
+
+// Backward compat alias
+function getRemoteConfig(): GlobalConfig {
+    return getGlobalConfig();
 }
 
 function getRepoBasePath(): string {
-    const config = globalStore.get(remoteConfigAtom);
-    return config.repoBasePath ?? DEFAULT_REPO_BASE;
+    const config = globalStore.get(globalConfigAtom);
+    return config.repoBasePath ?? "";
 }
 
-async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
-    const current = globalStore.get(remoteConfigAtom);
-    const updated: RemoteConfig = { ...current, ...partial };
-    globalStore.set(remoteConfigAtom, updated);
+function getAgentsPath(): string {
+    const config = globalStore.get(globalConfigAtom);
+    return config.agentsPath ?? "";
+}
+
+function getGithubOrg(): string {
+    const config = globalStore.get(globalConfigAtom);
+    return config.githubOrg ?? "";
+}
+
+function getPlausibleConfig(): { apiKey: string; siteId: string } {
+    const config = globalStore.get(globalConfigAtom);
+    return {
+        apiKey: config.plausibleApiKey ?? "",
+        siteId: config.plausibleSiteId ?? "",
+    };
+}
+
+async function setGlobalConfig(partial: Partial<GlobalConfig>): Promise<void> {
+    const current = globalStore.get(globalConfigAtom);
+    const updated: GlobalConfig = { ...current, ...partial };
+    globalStore.set(globalConfigAtom, updated);
     // Clear remote tmux cache so it re-resolves for new host
     if ("remoteHost" in partial || "remoteTmuxPath" in partial) {
         resolvedRemoteTmuxPath = null;
@@ -201,25 +237,26 @@ async function setRemoteConfig(partial: Partial<RemoteConfig>): Promise<void> {
             resolveRemoteTmuxPath();
         }
     }
-    // Persist to _global key in prefs file
+    // Persist all fields to _global key in prefs file
     const globalPrefs = agentPrefsMap.get("_global") ?? {};
-    if (updated.remoteHost != null) {
-        globalPrefs["remoteHost"] = updated.remoteHost;
-    } else {
-        delete globalPrefs["remoteHost"];
-    }
-    if (updated.remoteTmuxPath != null) {
-        globalPrefs["remoteTmuxPath"] = updated.remoteTmuxPath;
-    } else {
-        delete globalPrefs["remoteTmuxPath"];
-    }
-    if (updated.repoBasePath != null) {
-        globalPrefs["repoBasePath"] = updated.repoBasePath;
-    } else {
-        delete globalPrefs["repoBasePath"];
+    const keys: (keyof GlobalConfig)[] = [
+        "remoteHost", "remoteTmuxPath", "repoBasePath",
+        "agentsPath", "githubOrg", "plausibleApiKey", "plausibleSiteId",
+    ];
+    for (const key of keys) {
+        if (updated[key] != null) {
+            globalPrefs[key] = updated[key];
+        } else {
+            delete globalPrefs[key];
+        }
     }
     agentPrefsMap.set("_global", globalPrefs);
     await saveAgentPreferences();
+}
+
+// Backward compat alias
+async function setRemoteConfig(partial: Partial<GlobalConfig>): Promise<void> {
+    return setGlobalConfig(partial);
 }
 
 // Load prefs on module init
@@ -336,22 +373,25 @@ async function forceRestartWithAgent(blockId: string, agentName: string | null):
 export {
     agentsAtom,
     AgentColorTable,
-    DEFAULT_REPO_BASE,
     forceRestartWithAgent,
     getAgentColor,
     getAgentInfo,
     getAgentPrefs,
+    getGithubOrg,
+    getGlobalConfig,
+    getAgentsPath,
+    getPlausibleConfig,
     getRemoteConfig,
     getRemoteTmuxPath,
     getRepoBasePath,
     getTmuxCmd,
     getTmuxPath,
+    globalConfigAtom,
     loadAgentPreferences,
     loadAvatarDataUrl,
-    MATILDA_BASE,
-    remoteConfigAtom,
     resolveRemoteTmuxPath,
     setAgentPref,
+    setGlobalConfig,
     setRemoteConfig,
 };
-export type { AgentInfo, RemoteConfig };
+export type { AgentInfo, GlobalConfig };

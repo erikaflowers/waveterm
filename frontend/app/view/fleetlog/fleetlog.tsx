@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getRemoteConfig, getTmuxCmd } from "@/app/store/agents";
+import { getGithubOrg, getRemoteConfig, getRepoBasePath, getTmuxCmd } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -118,13 +118,17 @@ function formatRelativeTime(isoUtc: string): string {
 
 function deriveCommitUrl(projectDir: string | null, hash: string): string | null {
     if (!projectDir || !hash) return null;
-    // Extract repo name from project_dir
-    // "/Users/erikflowers/claude projects/matilda/agent-renner" → "matilda"
-    // "/Users/erikflowers/claude projects/fictioneer" → "fictioneer"
-    const match = projectDir.match(/\/claude projects\/([^/]+)/);
-    if (!match) return null;
-    const repo = match[1];
-    return `https://github.com/erikaflowers/${repo}/commit/${hash}`;
+    const org = getGithubOrg();
+    const basePath = getRepoBasePath();
+    if (!org || !basePath) return null;
+    // Extract repo name from project_dir relative to base path
+    // e.g. "/Users/erik/projects/myrepo/subfolder" → "myrepo"
+    const suffix = projectDir.startsWith(basePath) ? projectDir.slice(basePath.length) : null;
+    if (!suffix) return null;
+    const parts = suffix.replace(/^\//, "").split("/");
+    const repo = parts[0];
+    if (!repo) return null;
+    return `https://github.com/${org}/${repo}/commit/${hash}`;
 }
 
 // --- Data Fetching ---

@@ -4,13 +4,13 @@
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import {
     AgentColorTable,
-    DEFAULT_REPO_BASE,
     getAgentInfo,
+    getAgentsPath,
     getRemoteConfig,
     getRepoBasePath,
     getTmuxCmd,
     loadAvatarDataUrl,
-    remoteConfigAtom,
+    globalConfigAtom,
     resolveRemoteTmuxPath,
     setRemoteConfig,
     type AgentInfo,
@@ -258,13 +258,14 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     // Load avatars on mount (using dynamic repo base path)
     React.useEffect(() => {
         const loadAvatars = async () => {
-            const matildaPath = getRepoBasePath() + "/matilda";
-            console.log("[crew] loading avatars from:", matildaPath + "/portraits/");
+            const agentsDir = getAgentsPath();
+            if (!agentsDir) return;
+            console.log("[crew] loading avatars from:", agentsDir + "/portraits/");
             const loaded: Record<string, string | null> = {};
             let successCount = 0;
             for (const key of Object.keys(AgentColorTable)) {
                 const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
-                const avatarPath = `${matildaPath}/portraits/${capitalized}.jpg`;
+                const avatarPath = `${agentsDir}/portraits/${capitalized}.jpg`;
                 const result = await loadAvatarDataUrl(avatarPath);
                 loaded[key] = result;
                 if (result) successCount++;
@@ -310,7 +311,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
 
     const handleLaunch = React.useCallback(
         async (agentKey: string) => {
-            const agentDir = `${getRepoBasePath()}/matilda/agent-${agentKey}`;
+            const agentDir = `${getAgentsPath()}/agent-${agentKey}`;
             const remote = getRemoteConfig();
             const tmux = getTmuxCmd();
             const cmd = remote?.remoteHost
@@ -340,7 +341,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
         const tmux = getTmuxCmd();
         const stopped = agents.filter((a) => !a.session);
         for (const agent of stopped) {
-            const agentDir = `${getRepoBasePath()}/matilda/agent-${agent.key}`;
+            const agentDir = `${getAgentsPath()}/agent-${agent.key}`;
             const cmd = remote?.remoteHost
                 ? `ssh ${remote.remoteHost} "${tmux} new-session -d -s ${agent.key} -c \\"${agentDir}\\""`
                 : `${tmux} new-session -d -s ${agent.key} -c "${agentDir}"`;
@@ -371,17 +372,17 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
     const inactiveAgents = agentsWithAvatars.filter((a) => !a.session);
 
     // Remote config UI state
-    const remoteConfig = jotai.useAtomValue(remoteConfigAtom, { store: globalStore });
+    const remoteConfig = jotai.useAtomValue(globalConfigAtom, { store: globalStore });
     const [showRemotePanel, setShowRemotePanel] = React.useState(false);
     const [hostInput, setHostInput] = React.useState(remoteConfig.remoteHost ?? "");
-    const [repoPathInput, setRepoPathInput] = React.useState(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
+    const [repoPathInput, setRepoPathInput] = React.useState(remoteConfig.repoBasePath ?? "");
     const [tmuxPathInput, setTmuxPathInput] = React.useState(remoteConfig.remoteTmuxPath ?? "");
     const isRemote = !!remoteConfig.remoteHost;
 
     // Sync inputs when config changes externally
     React.useEffect(() => {
         setHostInput(remoteConfig.remoteHost ?? "");
-        setRepoPathInput(remoteConfig.repoBasePath ?? DEFAULT_REPO_BASE);
+        setRepoPathInput(remoteConfig.repoBasePath ?? "");
         setTmuxPathInput(remoteConfig.remoteTmuxPath ?? "");
     }, [remoteConfig.remoteHost, remoteConfig.repoBasePath, remoteConfig.remoteTmuxPath]);
 
@@ -482,7 +483,7 @@ const CrewView: React.FC<ViewComponentProps<CrewViewModel>> = ({ model }) => {
                         onChange={(e) => setRepoPathInput(e.target.value)}
                         onBlur={() => saveRepoPath(repoPathInput)}
                         onKeyDown={(e) => { if (e.key === "Enter") { saveRepoPath(repoPathInput); (e.target as HTMLInputElement).blur(); } }}
-                        placeholder={DEFAULT_REPO_BASE}
+                        placeholder={"/path/to/projects"}
                         className="text-[11px] px-2 py-1 rounded"
                         style={{
                             background: "rgba(0,0,0,0.3)",

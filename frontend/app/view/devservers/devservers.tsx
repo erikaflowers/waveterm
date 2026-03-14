@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { getRepoBasePath } from "@/app/store/agents";
 import { getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -49,13 +50,16 @@ function parseLsofOutput(stdout: string): { pid: number; process: string; port: 
 }
 
 async function resolveProject(pid: number): Promise<string> {
+    const basePath = getRepoBasePath();
+    if (!basePath) return "(unknown)";
     try {
-        const result = await getApi().execCommand(`/usr/sbin/lsof -p ${pid} -Fn 2>/dev/null | grep '^n.*/claude projects/' | head -1`);
+        const escaped = basePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const result = await getApi().execCommand(`/usr/sbin/lsof -p ${pid} -Fn 2>/dev/null | grep '^n.*${basePath}/' | head -1`);
         const line = result.stdout.trim();
         if (!line) return "(unknown)";
-        const match = line.match(/claude projects\/([^/]+(?:\/[^/]+)?)/);
+        const regex = new RegExp(escaped + "/([^/]+(?:/[^/]+)?)");
+        const match = line.match(regex);
         if (match) {
-            // Strip node_modules and anything after
             return match[1].replace(/\/node_modules\/.*/, "");
         }
         return "(unknown)";

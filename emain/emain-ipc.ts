@@ -501,6 +501,17 @@ export function initIpcHandlers() {
         }
     });
 
+    electron.ipcMain.handle("pick-directory", async (_event, title?: string) => {
+        const ww = focusedWaveWindow;
+        if (ww == null) return null;
+        const result = await electron.dialog.showOpenDialog(ww, {
+            title: title || "Select Directory",
+            properties: ["openDirectory", "createDirectory"],
+        });
+        if (result.canceled || !result.filePaths?.length) return null;
+        return result.filePaths[0];
+    });
+
     electron.ipcMain.handle("read-file-base64", async (_event, filePath: string) => {
         try {
             const data = await fs.promises.readFile(filePath);

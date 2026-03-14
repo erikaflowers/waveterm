@@ -31,7 +31,7 @@
             }
         }
     },
-    "defwidget@ai": {
+    "defwidget@ai:disabled": {
         "display:order": -2,
         "icon": "sparkles",
         "label": "ai",

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getGlobalConfig, setGlobalConfig } from "@/app/store/agents";
 import { getApi } from "@/app/store/global";
 import { getAtoms } from "@/app/store/global-atoms";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
@@ -509,6 +510,129 @@ const TextSetting = memo(({ label, description, value, onChange, placeholder }: 
 });
 TextSetting.displayName = "TextSetting";
 
+interface PathSettingProps {
+    label: string;
+    description?: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+}
+
+const PathSetting = memo(({ label, description, value, onChange, placeholder }: PathSettingProps) => {
+    const [localValue, setLocalValue] = useState(value || "");
+
+    useEffect(() => {
+        setLocalValue(value || "");
+    }, [value]);
+
+    const handleSave = useCallback(() => {
+        const trimmed = localValue.trim();
+        if (trimmed !== (value || "")) {
+            onChange(trimmed || null);
+        }
+    }, [localValue, value, onChange]);
+
+    const handleBrowse = useCallback(async () => {
+        const picked = await getApi().pickDirectory(label);
+        if (picked) {
+            setLocalValue(picked);
+            onChange(picked);
+        }
+    }, [label, onChange]);
+
+    return (
+        <div className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-secondary/20 transition-colors">
+            <div className="flex flex-col">
+                <span className="text-sm font-medium">{label}</span>
+                {description && <span className="text-xs text-muted mt-0.5">{description}</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="text"
+                    value={localValue}
+                    onChange={(e) => setLocalValue(e.target.value)}
+                    onBlur={handleSave}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            handleSave();
+                            (e.target as HTMLInputElement).blur();
+                        }
+                    }}
+                    placeholder={placeholder}
+                    className="w-48 px-2 py-1 text-sm bg-background border border-border rounded focus:outline-none focus:border-accent"
+                />
+                <button
+                    onClick={handleBrowse}
+                    className="px-2 py-1 text-xs rounded transition-colors"
+                    style={{
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        color: "#888",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                    }}
+                    title="Browse..."
+                >
+                    <i className="fa-sharp fa-solid fa-folder-open" />
+                </button>
+            </div>
+        </div>
+    );
+});
+PathSetting.displayName = "PathSetting";
+
+const TerminusSection = memo(() => {
+    const [config, setConfig] = useState(() => getGlobalConfig());
+
+    const updateField = useCallback((key: string, value: string) => {
+        const trimmed = value.trim();
+        const val = trimmed || null;
+        setGlobalConfig({ [key]: val });
+        setConfig((prev) => ({ ...prev, [key]: val }));
+    }, []);
+
+    return (
+        <SettingsSection title="Terminus">
+            <PathSetting
+                label="Repo Base Path"
+                description="Root directory containing your project repos"
+                value={config.repoBasePath ?? ""}
+                onChange={(v) => updateField("repoBasePath", v)}
+                placeholder="/Users/you/projects"
+            />
+            <PathSetting
+                label="Agents Path"
+                description="Root path to the agents repo (for avatars, crew)"
+                value={config.agentsPath ?? ""}
+                onChange={(v) => updateField("agentsPath", v)}
+                placeholder="/Users/you/projects/agents"
+            />
+            <TextSetting
+                label="GitHub Org / User"
+                description="GitHub username or org for commit links"
+                value={config.githubOrg ?? ""}
+                onChange={(v) => updateField("githubOrg", v)}
+                placeholder="myusername"
+            />
+            <SecretSetting
+                label="Plausible API Key"
+                description="Bearer token for Plausible analytics"
+                value={config.plausibleApiKey ?? ""}
+                onChange={(v) => updateField("plausibleApiKey", v)}
+                placeholder="your-api-key"
+            />
+            <TextSetting
+                label="Plausible Site ID"
+                description="Domain tracked in Plausible"
+                value={config.plausibleSiteId ?? ""}
+                onChange={(v) => updateField("plausibleSiteId", v)}
+                placeholder="example.com"
+            />
+        </SettingsSection>
+    );
+});
+TerminusSection.displayName = "TerminusSection";
+
 const SettingsVisualContent = memo(({ model }: { model: WaveConfigViewModel }) => {
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
     const liveSettings = useAtomValue(getAtoms().settingsAtom);
@@ -534,6 +658,8 @@ const SettingsVisualContent = memo(({ model }: { model: WaveConfigViewModel }) =
     return (
         <div className="flex flex-col p-6 overflow-y-auto h-full">
             <AccountSection />
+            <TerminusSection />
+            {/* AI section hidden until Terminus has an in-app AI plan
             <SettingsSection title="AI">
                 <SecretSetting
                     label="API Token"
@@ -557,6 +683,7 @@ const SettingsVisualContent = memo(({ model }: { model: WaveConfigViewModel }) =
                     placeholder="https://api.anthropic.com"
                 />
             </SettingsSection>
+            */}
             <SettingsSection title="Layout">
                 <NumberSetting
                     label="Pane Gap Size"

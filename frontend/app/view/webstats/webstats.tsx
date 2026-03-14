@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { getPlausibleConfig } from "@/app/store/agents";
 import { WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -10,8 +11,6 @@ import * as React from "react";
 // --- Config ---
 
 const PLAUSIBLE_API = "https://plausible.io/api/v2/query";
-const PLAUSIBLE_KEY = "Rey87TB1jDYLMuED9KhP4uaLIzNK0NFa2Yq9kZgddKftE3e1q1dn4EO-yBNP7rVc";
-const SITE_ID = "zerovector.design";
 const POLL_INTERVAL = 60000;
 
 // --- Types ---
@@ -67,14 +66,14 @@ type StatsData = {
 
 // --- API ---
 
-async function plausibleQuery(body: object): Promise<any> {
+async function plausibleQuery(apiKey: string, siteId: string, body: object): Promise<any> {
     const resp = await fetch(PLAUSIBLE_API, {
         method: "POST",
         headers: {
-            Authorization: `Bearer ${PLAUSIBLE_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ site_id: SITE_ID, ...body }),
+        body: JSON.stringify({ site_id: siteId, ...body }),
     });
     if (!resp.ok) {
         const text = await resp.text().catch(() => "");
@@ -83,18 +82,18 @@ async function plausibleQuery(body: object): Promise<any> {
     return resp.json();
 }
 
-async function fetchRealtime(): Promise<number> {
+async function fetchRealtime(apiKey: string, siteId: string): Promise<number> {
     const now = new Date();
     const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
-    const data = await plausibleQuery({
+    const data = await plausibleQuery(apiKey, siteId, {
         date_range: [fiveMinAgo.toISOString(), now.toISOString()],
         metrics: ["visitors"],
     });
     return data?.results?.[0]?.metrics?.[0] ?? 0;
 }
 
-async function fetchAggregate(dateRange: DateRange): Promise<AggregateStats> {
-    const data = await plausibleQuery({
+async function fetchAggregate(apiKey: string, siteId: string, dateRange: DateRange): Promise<AggregateStats> {
+    const data = await plausibleQuery(apiKey, siteId, {
         date_range: getExplicitDateRange(dateRange),
         metrics: ["visitors", "visits", "pageviews", "bounce_rate", "visit_duration", "views_per_visit"],
     });
@@ -109,8 +108,8 @@ async function fetchAggregate(dateRange: DateRange): Promise<AggregateStats> {
     };
 }
 
-async function fetchTopPages(dateRange: DateRange): Promise<BreakdownRow[]> {
-    const data = await plausibleQuery({
+async function fetchTopPages(apiKey: string, siteId: string, dateRange: DateRange): Promise<BreakdownRow[]> {
+    const data = await plausibleQuery(apiKey, siteId, {
         date_range: getExplicitDateRange(dateRange),
         metrics: ["visitors", "pageviews"],
         dimensions: ["event:page"],
@@ -123,8 +122,8 @@ async function fetchTopPages(dateRange: DateRange): Promise<BreakdownRow[]> {
     }));
 }
 
-async function fetchTopSources(dateRange: DateRange): Promise<BreakdownRow[]> {
-    const data = await plausibleQuery({
+async function fetchTopSources(apiKey: string, siteId: string, dateRange: DateRange): Promise<BreakdownRow[]> {
+    const data = await plausibleQuery(apiKey, siteId, {
         date_range: getExplicitDateRange(dateRange),
         metrics: ["visitors"],
         dimensions: ["visit:source"],
@@ -270,15 +269,20 @@ const WebStatsView: React.FC<ViewComponentProps<WebStatsViewModel>> = ({ model }
 
     const refresh = React.useCallback(
         async (range?: DateRange) => {
+            const { apiKey, siteId } = getPlausibleConfig();
+            if (!apiKey || !siteId) {
+                setError("Configure Plausible API Key and Site ID in Settings.");
+                return;
+            }
             const dr = range ?? dateRange;
             setLoading(true);
             setError(null);
             try {
                 const [realtime, aggregate, topPages, topSources] = await Promise.all([
-                    fetchRealtime(),
-                    fetchAggregate(dr),
-                    fetchTopPages(dr),
-                    fetchTopSources(dr),
+                    fetchRealtime(apiKey, siteId),
+                    fetchAggregate(apiKey, siteId, dr),
+                    fetchTopPages(apiKey, siteId, dr),
+                    fetchTopSources(apiKey, siteId, dr),
                 ]);
                 setStats({ realtime, aggregate, topPages, topSources });
             } catch (e: any) {
@@ -321,7 +325,7 @@ const WebStatsView: React.FC<ViewComponentProps<WebStatsViewModel>> = ({ model }
             {/* Header bar */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-white/10" style={{ width: "100%" }}>
                 <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold text-muted uppercase tracking-wider">Zero Vector</span>
+                    <span className="text-[12px] font-semibold text-muted uppercase tracking-wider">{getPlausibleConfig().siteId || "Web Stats"}</span>
                     <span className="flex items-center gap-1">
                         <span
                             style={{
@@ -405,7 +409,7 @@ const WebStatsView: React.FC<ViewComponentProps<WebStatsViewModel>> = ({ model }
             {/* Footer */}
             <div className="flex items-center px-3 py-1.5 border-t border-white/10" style={{ width: "100%" }}>
                 <span className="text-[10px] text-muted" style={{ opacity: 0.5 }}>
-                    plausible · {SITE_ID}
+                    plausible · {getPlausibleConfig().siteId || "not configured"}
                 </span>
             </div>
         </div>

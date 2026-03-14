@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { getRepoBasePath } from "@/app/store/agents";
 import { createBlock, getApi, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import * as jotai from "jotai";
@@ -33,16 +34,19 @@ type SortDir = "asc" | "desc";
 
 // --- Constants ---
 
-const SCAN_DIR = "/Users/erikflowers/claude projects";
 const POLL_INTERVAL = 60000;
 const STALE_THRESHOLD_DAYS = 7;
-
-// --- Shell Command ---
-
-const GIT_SCAN_COMMAND = `find "${SCAN_DIR}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; echo "---REPO:$repo"; echo "BRANCH:$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"; echo "DIRTY:$(git -C "$repo" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"; echo "MSG:$(git -C "$repo" log -1 --pretty=format:'%s' 2>/dev/null)"; echo "AGO:$(git -C "$repo" log -1 --pretty=format:'%ar' 2>/dev/null)"; echo "TS:$(git -C "$repo" log -1 --pretty=format:'%ct' 2>/dev/null)"; echo "HASH:$(git -C "$repo" log -1 --pretty=format:'%H' 2>/dev/null)"; echo "REMOTE:$(git -C "$repo" remote get-url origin 2>/dev/null)"; echo "UNPUSHED:$(git -C "$repo" log @{u}.. --oneline 2>/dev/null | wc -l | tr -d ' ')"; echo "BEHIND:$(git -C "$repo" rev-list HEAD..@{u} --count 2>/dev/null || echo 0)"; done`;
-
-const GIT_FETCH_COMMAND = `find "${SCAN_DIR}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; git -C "$repo" fetch --all --quiet 2>/dev/null; done`;
 const FETCH_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+// --- Shell Commands (dynamic from user prefs) ---
+
+function buildGitScanCommand(scanDir: string): string {
+    return `find "${scanDir}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; echo "---REPO:$repo"; echo "BRANCH:$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null || echo DETACHED)"; echo "DIRTY:$(git -C "$repo" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"; echo "MSG:$(git -C "$repo" log -1 --pretty=format:'%s' 2>/dev/null)"; echo "AGO:$(git -C "$repo" log -1 --pretty=format:'%ar' 2>/dev/null)"; echo "TS:$(git -C "$repo" log -1 --pretty=format:'%ct' 2>/dev/null)"; echo "HASH:$(git -C "$repo" log -1 --pretty=format:'%H' 2>/dev/null)"; echo "REMOTE:$(git -C "$repo" remote get-url origin 2>/dev/null)"; echo "UNPUSHED:$(git -C "$repo" log @{u}.. --oneline 2>/dev/null | wc -l | tr -d ' ')"; echo "BEHIND:$(git -C "$repo" rev-list HEAD..@{u} --count 2>/dev/null || echo 0)"; done`;
+}
+
+function buildGitFetchCommand(scanDir: string): string {
+    return `find "${scanDir}" -maxdepth 2 -type d -name ".git" 2>/dev/null | while IFS= read -r gitdir; do repo="$(dirname "$gitdir")"; git -C "$repo" fetch --all --quiet 2>/dev/null; done`;
+}
 
 // --- Helpers ---
 
@@ -459,9 +463,15 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
     const [sortDir, setSortDir] = React.useState<SortDir>("desc");
 
     const refreshRepos = React.useCallback(async () => {
+        const scanDir = getRepoBasePath();
+        if (!scanDir) {
+            setRepos([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const result = await getApi().execCommand(GIT_SCAN_COMMAND);
+            const result = await getApi().execCommand(buildGitScanCommand(scanDir));
             const parsed = parseRepoOutput(result.stdout);
             setRepos(parsed);
         } catch (e) {
@@ -471,9 +481,11 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
     }, []);
 
     const fetchAndRefresh = React.useCallback(async () => {
+        const scanDir = getRepoBasePath();
+        if (!scanDir) return;
         setFetching(true);
         try {
-            await getApi().execCommand(GIT_FETCH_COMMAND);
+            await getApi().execCommand(buildGitFetchCommand(scanDir));
             setLastFetchTime(Date.now());
         } catch (e) {
             console.error("Failed to fetch repos:", e);
@@ -624,7 +636,9 @@ const GitDashView: React.FC<ViewComponentProps<GitDashViewModel>> = ({ model }) 
             >
                 {repos.length === 0 && !loading && (
                     <div className="flex items-center justify-center py-8">
-                        <span className="text-[12px] text-muted">No git repos found.</span>
+                        <span className="text-[12px] text-muted">
+                            {getRepoBasePath() ? "No git repos found." : "Set Repo Base Path in Settings to scan for repos."}
+                        </span>
                     </div>
                 )}
                 {sortedRepos.map((repo) => (
