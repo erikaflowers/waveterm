@@ -1,138 +1,123 @@
-# Building Wave Terminal
+# Building Terminus
 
-These instructions are for setting up dependencies and building Wave Terminal from source on macOS, Linux, and Windows.
+Instructions for building Terminus from source on macOS. Linux and Windows builds are possible but untested.
 
 ## Prerequisites
 
-### OS-specific dependencies
+- [Go](https://golang.org/) 1.22+
+- [Node.js](https://nodejs.org/) 22+
+- [go-task](https://taskfile.dev/) (`brew install go-task`)
+- [npm](https://www.npmjs.com/) (comes with Node.js)
 
-See [Minimum requirements](README.md#minimum-requirements) to learn whether your OS is supported.
+macOS has no additional platform-specific dependencies. Linux requires `zip` and the [Zig](https://ziglang.org/) compiler for CGO cross-compilation.
 
-#### macOS
+## Clone and Install
 
-macOS does not have any platform-specific dependencies.
-
-#### Linux
-
-You must have `zip` installed. We also require the [Zig](https://ziglang.org/) compiler for statically linking CGO.
-
-Debian/Ubuntu:
-
-```sh
-sudo apt install zip snapd
-sudo snap install zig --classic --beta
+```bash
+git clone https://github.com/erikaflowers/terminus.git
+cd terminus
+npm install
 ```
 
-Fedora/RHEL:
+## Development
 
-```sh
-sudo dnf install zip zig
-```
+Run the dev server with hot module reloading:
 
-Arch:
-
-```sh
-sudo pacman -S zip zig
-```
-
-##### For packaging
-
-For packaging, the following additional packages are required:
-
-- `fpm` &mdash; If you're on x64 you can skip this. If you're on ARM64, install fpm via [Gem](https://rubygems.org/gems/fpm)
-- `rpm` &mdash; If you're not on Fedora, install RPM via your package manager.
-- `snapd` &mdash; If your distro doesn't already include it, [install `snapd`](https://snapcraft.io/docs/installing-snapd)
-- `lxd` &mdash; [Installation instructions](https://canonical.com/lxd/install)
-- `snapcraft` &mdash; Run `sudo snap install snapcraft --classic`
-- `libarchive-tools` &mdash; Install via your package manager
-- `binutils` &mdash; Install via your package manager
-- `libopenjp2-tools` &mdash; Install via your package manager
-- `squashfs-tools` &mdash; Install via your package manager
-
-#### Windows
-
-You will need the [Zig](https://ziglang.org/) compiler for statically linking CGO.
-
-You can find installation instructions for Zig on Windows [here](https://ziglang.org/learn/getting-started/#managers).
-
-### Task
-
-Download and install Task (to run the build commands): https://taskfile.dev/installation/
-
-Task is a modern equivalent to GNU Make. We use it to coordinate our build steps. You can find our full Task configuration in [Taskfile.yml](Taskfile.yml).
-
-### Go
-
-Download and install Go via your package manager or directly from the website: https://go.dev/doc/install
-
-### NodeJS
-
-Make sure you have a NodeJS 22 LTS installed.
-
-See NodeJS's website for platform-specific instructions: https://nodejs.org/en/download
-
-We now use `npm`, so you can just run an `npm install` to install node dependencies.
-
-## Clone the Repo
-
-```sh
-git clone git@github.com:wavetermdev/waveterm.git
-```
-
-or
-
-```sh
-git clone https://github.com/wavetermdev/waveterm.git
-```
-
-## Install code dependencies
-
-The first time you clone the repo, you'll need to run the following to load the dependencies. If you ever have issues building the app, try running this again:
-
-```sh
-task init
-```
-
-## Build and Run
-
-All the methods below will install Node and Go dependencies when they run the first time. All these should be run from within the Git repository.
-
-### Development server
-
-Run the following command to build the app and run it via Vite's development server (this enables Hot Module Reloading):
-
-```sh
+```bash
 task dev
 ```
 
-### Standalone
+This builds the Go backend, Electron preload scripts, and launches the frontend via Vite's dev server. The dev build uses separate data/config directories (`terminus-dev`) so it can run alongside the production app.
 
-Run the following command to build the app and run it standalone, without the development server. This will not reload on change:
+**Note:** If the production Terminus.app is running, kill it first — they share the Electron single-instance lock in dev mode.
 
-```sh
-task start
+## Production Build
+
+The full build has three steps:
+
+### 1. Build the Go backend
+
+```bash
+task build:backend --force
 ```
 
-### Packaged
+This compiles `wavesrv` (the Go backend) and `wsh` (the CLI tool) for all target platforms. The `--force` flag is important — Task's source fingerprinting can skip the build if it thinks nothing changed.
 
-Run the following command to generate a production build and package it. This lets you install the app locally. All artifacts will be placed in `make/`.
+### 2. Build the frontend
 
-```sh
-task package
+```bash
+npm run build:prod
 ```
 
-If you're on Linux ARM64, run the following:
+Compiles the React frontend with Vite in production mode.
 
-```sh
-USE_SYSTEM_FPM=1 task package
+### 3. Package the app
+
+```bash
+rm -rf make/
+npm exec electron-builder -- -c electron-builder.config.cjs -p never
 ```
+
+Generates DMGs and zip archives for both ARM64 and x64:
+
+```
+make/Terminus-darwin-arm64-0.14.1.dmg
+make/Terminus-darwin-x64-0.14.1.dmg
+make/Terminus-darwin-arm64-0.14.1.zip
+make/Terminus-darwin-x64-0.14.1.zip
+```
+
+### Important: Do NOT use `task package`
+
+`task package` has a race condition where `clean` deletes `dist/`, then `build:backend` thinks wavesrv is up-to-date and skips it. The result is a broken app that launches but shows no window. Always use the three-step process above.
 
 ## Debugging
 
-### Frontend logs
+### Frontend
 
-You can use the regular Chrome DevTools to debug the frontend application. You can open the DevTools using the keyboard shortcut `Cmd+Option+I` on macOS or `Ctrl+Option+I` on Linux and Windows. Logs will be sent to the Console tab in DevTools.
+Open Chrome DevTools with `Cmd+Option+I`. Console logs from React, panel data fetching, and IPC calls appear here.
 
-### Backend logs
+### Backend
 
-Backend logs for the development version of Wave can be found at `~/.waveterm-dev/waveapp.log`. Both the NodeJS backend from Electron and the main Go backend will log here.
+Backend logs are at:
+- **Dev:** `~/Library/Application Support/terminus-dev/waveapp.log`
+- **Prod:** `~/Library/Application Support/Terminus/waveapp.log`
+
+### Config directories
+
+- **Dev:** `~/.config/terminus-dev/`
+- **Prod:** `~/.config/terminus/`
+
+Agent preferences, settings, widgets, and connection configs are stored here as JSON files.
+
+## Icons
+
+App icons live in `build/`. To regenerate from a new source image:
+
+```bash
+cd build
+cp your-new-icon.png cube-1024.png
+cp cube-1024.png icon.png
+
+# Generate sized PNGs
+for size in 16 32 48 64 128 256 512; do
+  sips -z $size $size cube-1024.png --out icons/${size}x${size}.png
+done
+
+# Generate .icns for macOS
+mkdir -p /tmp/icon.iconset
+sips -z 16 16 cube-1024.png --out /tmp/icon.iconset/icon_16x16.png
+sips -z 32 32 cube-1024.png --out /tmp/icon.iconset/icon_16x16@2x.png
+sips -z 32 32 cube-1024.png --out /tmp/icon.iconset/icon_32x32.png
+sips -z 64 64 cube-1024.png --out /tmp/icon.iconset/icon_32x32@2x.png
+sips -z 128 128 cube-1024.png --out /tmp/icon.iconset/icon_128x128.png
+sips -z 256 256 cube-1024.png --out /tmp/icon.iconset/icon_128x128@2x.png
+sips -z 256 256 cube-1024.png --out /tmp/icon.iconset/icon_256x256.png
+sips -z 512 512 cube-1024.png --out /tmp/icon.iconset/icon_256x256@2x.png
+sips -z 512 512 cube-1024.png --out /tmp/icon.iconset/icon_512x512.png
+cp cube-1024.png /tmp/icon.iconset/icon_512x512@2x.png
+iconutil -c icns /tmp/icon.iconset -o icon.icns
+rm -rf /tmp/icon.iconset
+```
+
+Then rebuild the packaged app for the icons to take effect.

@@ -1,5 +1,7 @@
 ## Reporting Security Issues
 
-To report vulnerabilities or security concerns, please email us at: [security@commandline.dev](mailto:security@commandline.dev)
+If you discover a security vulnerability in Terminus, please report it responsibly.
 
-**Please do not report security vulnerabilities through public github issues.**
+Email: [erika@zerovector.design](mailto:erika@zerovector.design)
+
+**Please do not report security vulnerabilities through public GitHub issues.**

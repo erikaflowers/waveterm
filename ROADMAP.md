@@ -34,9 +34,21 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned
 - ✅ Usage Dashboard — cost tracking
 - ✅ Hopper — multi-agent prompt dispatch with relay chains
 
+### Custom Panels (cont.)
+- ✅ Web Stats — Plausible analytics dashboard (configurable)
+
+### Settings & Preferences
+- ✅ All user-specific paths elevated to configurable preferences
+- ✅ Terminus section in Settings panel (repo path, agents path, GitHub org, Plausible)
+- ✅ Native OS folder picker for path fields
+- ✅ AI section hidden until in-app AI plan exists
+- ✅ Cloud sync for layout/settings (machine-specific paths excluded)
+
 ### Build & Infra
 - ✅ Packaged app builds (ARM64 + x64 DMG)
+- ✅ Terminus cube icon (dock, app bundle, DMG)
 - ✅ wcloud endpoint warning instead of crash in dev mode
+- ✅ README, BUILD, CONTRIBUTING rewritten for Terminus
 
 ---
 

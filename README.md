@@ -1,193 +1,128 @@
 # Terminus
 
-**A mission control terminal for AI agent crews.** Forked from [Wave Terminal](https://github.com/wavetermdev/waveterm) (v0.14.1-beta.0).
+**A mission control terminal for AI agent crews.** Built on [Wave Terminal](https://github.com/wavetermdev/waveterm) (v0.14.1).
 
-Terminus extends Wave's block-based terminal with first-class support for managing multiple AI agents running in parallel tmux sessions. It's built for workflows where you're orchestrating a crew of specialized agents — each with their own identity, terminal theme, and persistent session — from a single unified interface.
-
----
-
-## What Terminus Adds
-
-### Agent Pane Headers
-
-Every terminal block can be assigned to an agent. The header shows the agent's name, role, avatar, and a colored accent border. Switching agents is instant — use the header dropdown to pick an agent, and the pane restarts into that agent's tmux session automatically.
-
-- 32px circular avatars loaded via IPC base64 bridge
-- Per-agent color accents on block borders
-- Typeahead modal for fast agent switching (fuzzy search by name or role)
-- "No Agent" option returns to a bare shell
-
-### Agent Session Switching (ForceRestart)
-
-Agent switching uses WaveTerm's `cmd:initscript.zsh` metadata + `ControllerResyncCommand(forcerestart=true)` to reliably swap terminal sessions. The old PTY is killed, a fresh shell spawns, and the initscript auto-attaches to the agent's tmux session. Works regardless of what the terminal is currently running (Claude Code, vim, etc.).
-
-### Agent Themes & Preferences
-
-Each agent can have a custom terminal theme and background color. Preferences persist across switches — when you leave an agent, their current theme/bgcolor is saved; when you return, it's restored.
-
-- Per-agent theme via `term:theme` metadata
-- Per-agent background color override via `term:bgcolor`
-- Color picker (react-colorful) for live bgcolor adjustment
-- Preferences stored in `~/.config/terminus-dev/agent-preferences.json`
-
-### Crew Manager Panel
-
-A sidebar widget showing all agents and their live tmux session status. Accessible from the sidebar like any other Wave widget.
-
-- Real-time tmux session monitoring (auto-refreshes every 15s)
-- Active/Inactive sections with green/gray status labels
-- Per-agent avatars, roles, colored status dots, and uptime display
-- **Attach** — opens a new terminal block already connected to the agent's tmux session
-- **Launch** / **Kill** — start or stop individual tmux sessions
-- **Launch All** / **Kill All** — batch operations
-
-### Dev Servers Panel
-
-A sidebar widget that monitors active development servers by scanning listening TCP ports (3000-9999).
-
-- Detects node, Python, uvicorn, ruby, php, java, deno, and bun processes
-- Resolves project names from open file descriptors
-- Color-coded port badges by range (green 3xxx, cyan 4xxx, purple 5xxx, amber 8xxx, red 9xxx)
-- **Open** — launches `localhost:{port}` in your default browser
-- **Kill** — terminates the process on that port
-- **Kill All** — batch kill all detected dev servers
-- Auto-refreshes every 30 seconds with manual refresh button
+Terminus is an Electron-based terminal multiplexer designed for orchestrating multiple AI agents running in parallel tmux sessions. Each agent gets its own identity, terminal theme, persistent session, and avatar — all managed from a single unified interface.
 
 ---
 
-## Agent Architecture
+## Features
 
-Terminus uses a static agent registry defined in `frontend/app/store/agents.ts`. Each agent has:
+### Agent System
 
-| Field | Description |
+Every terminal pane can be assigned to an agent. The header shows the agent's name, role, avatar, and a colored accent border. Switching agents is instant via header dropdown — the pane restarts into that agent's tmux session automatically using ForceRestart (kills PTY, spawns fresh shell, auto-attaches tmux).
+
+- 16 pre-defined agents with unique colors, roles, and avatars
+- Per-agent terminal themes and background colors
+- Per-agent preferences persist across sessions
+- Re-selecting the same agent forces reconnect (broken pipe recovery)
+- Local and remote (SSH) tmux session support with auto-detected tmux paths
+
+### Panels
+
+Terminus includes several custom sidebar panels beyond the terminal:
+
+| Panel | Description |
 |-------|-------------|
-| `name` | Display name (capitalized) |
-| `dirName` | Working directory (`agent-{key}`) |
-| `color` | Hex color for UI accents |
-| `role` | Short role description |
-| `avatarPath` | Path to avatar image |
-| `defaultTheme` | Terminal theme name |
+| **Crew Manager** | Live agent status, avatars, tmux session control (attach/launch/kill) |
+| **Git Dashboard** | Repo scanner with branch, status, commit info, fetch/pull actions |
+| **Fleet Activity Log** | Agent session logger with SQLite backend, conversation search |
+| **Hopper** | Multi-agent prompt dispatch with relay chains, drafts, macros |
+| **Usage Dashboard** | API cost tracking |
+| **Web Stats** | Plausible analytics dashboard (configurable API key + site) |
+| **Dev Servers** | Active dev server monitor (ports 3000-9999) with kill/open |
+| **Node Graph** | Tmux session topology visualizer |
 
-Agents are mapped to tmux sessions by lowercase name. The Crew Manager shows which sessions are running and lets you manage them without leaving the terminal.
+### Layout
 
-### Key Files
+- Block-based tiling layout (inherited from Wave)
+- Accordion collapse for vertical pane stacking
+- Settings opens as a layout panel, not a modal
+- Dev and production app can run simultaneously (separate Electron instance locks)
 
-| File | Purpose |
-|------|---------|
-| `frontend/app/store/agents.ts` | Agent registry, preferences, ForceRestart logic |
-| `frontend/app/modals/agenttypeahead.tsx` | Header dropdown agent switcher |
-| `frontend/app/view/crew/crew.tsx` | Crew Manager sidebar panel |
-| `frontend/app/view/devservers/devservers.tsx` | Dev Servers sidebar panel |
-| `frontend/app/block/block.tsx` | Block registry (view type -> ViewModel) |
-| `frontend/app/block/blockutil.tsx` | Icon and label mappings |
-| `pkg/wconfig/defaultconfig/widgets.json` | Sidebar widget definitions |
-| `emain/emain-ipc.ts` | Electron IPC handlers (exec-command) |
+### User Preferences
+
+All user-specific paths and credentials are configurable in Settings (no hardcoded paths):
+
+- **Repo Base Path** — root directory for project scanning (git dashboard, dev servers)
+- **Agents Path** — path to agent repo (avatars, crew working directories)
+- **GitHub Org** — for commit links in fleet log
+- **Plausible API Key / Site ID** — for web stats panel
+- Path fields include native OS folder picker
+
+Preferences are stored in `~/.config/terminus/agent-preferences.json` (prod) or `~/.config/terminus-dev/agent-preferences.json` (dev).
+
+### Cloud Sync
+
+Optional Google sign-in syncs layout settings, connections, and widgets across machines. Machine-specific paths (repo base, agents path) are intentionally excluded from sync.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- macOS (ARM64 or x64), Linux, or Windows
+- [tmux](https://github.com/tmux/tmux) installed and in PATH
+
+### Install
+
+Download the latest DMG from the releases page, or build from source (see [BUILD.md](BUILD.md)).
+
+### First Run
+
+1. Open Terminus
+2. Go to **Settings** (gear icon in sidebar)
+3. Fill in the **Terminus** section:
+   - **Repo Base Path** — where your project repos live
+   - **Agents Path** — where agent directories and portraits are
+4. Open the **Crew** panel to see agents and manage tmux sessions
+5. Click any terminal pane header to assign an agent
 
 ---
 
 ## Building from Source
 
-See [BUILD.md](BUILD.md). Requires:
-
-- [Go](https://golang.org/) 1.22+
-- [Node.js](https://nodejs.org/) 22+
-- [go-task](https://taskfile.dev/)
-- [Zig](https://ziglang.org/) (for CGo cross-compilation)
+See [BUILD.md](BUILD.md) for full instructions. Quick start:
 
 ```bash
-task dev    # Launch in dev mode
+git clone https://github.com/erikaflowers/terminus.git
+cd terminus
+npm install
+task build:backend --force
+npm run build:prod
+npm exec electron-builder -- -c electron-builder.config.cjs -p never
 ```
+
+Output: `make/Terminus-darwin-arm64-0.14.1.dmg` and `make/Terminus-darwin-x64-0.14.1.dmg`
+
+---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `frontend/app/store/agents.ts` | Agent registry, global config, preferences, ForceRestart |
+| `frontend/app/view/waveconfig/settingsvisual.tsx` | Settings UI with Terminus section |
+| `frontend/app/view/crew/crew.tsx` | Crew Manager panel |
+| `frontend/app/view/gitdash/gitdash.tsx` | Git Dashboard panel |
+| `frontend/app/view/fleetlog/fleetlog.tsx` | Fleet Activity Log panel |
+| `frontend/app/view/hopper/hopper.tsx` | Hopper dispatch panel |
+| `frontend/app/view/webstats/webstats.tsx` | Plausible analytics panel |
+| `frontend/app/block/block.tsx` | Block registry (view type -> ViewModel) |
+| `pkg/wconfig/defaultconfig/widgets.json` | Sidebar widget definitions |
+| `emain/emain-ipc.ts` | Electron IPC handlers |
 
 ---
 
 ## Upstream
 
-Terminus is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm), an open-source AI-integrated terminal for macOS, Linux, and Windows. All upstream features — SSH sessions, AI chat, file preview, drag-and-drop blocks, `wsh` CLI — are preserved. See the [Wave documentation](https://docs.waveterm.dev) for those features.
+Terminus is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm), an open-source terminal for macOS, Linux, and Windows. All upstream features — SSH sessions, file preview, drag-and-drop blocks, `wsh` CLI — are preserved.
 
-Forked at Wave v0.14.1-beta.0 (`e8d6ff5b`, Feb 28, 2026). Last synced: v0.14.1 (`5c6ee3a1`, Mar 5, 2026).
-
-### Upstream Sync Check
-
-Run this weekly (or before starting new feature work) to see how far behind we are:
-
-```bash
-cd ~/claude\ projects/waveterm
-git fetch upstream && git rev-list HEAD..upstream/main --count
-```
-
-If the count is non-zero, check what changed:
-
-```bash
-git log --oneline HEAD..upstream/main
-git diff --name-only HEAD..upstream/main
-```
-
-**Watch files** — these are the only shared files where our changes overlap with Wave's core logic. If upstream touches any of these, review manually before merging:
-
-- `frontend/app/block/blockframe-header.tsx` — agent button + color picker in header JSX
-- `frontend/app/block/blockframe.tsx` — agent modal + CSS variables
-- `frontend/app/view/term/term-model.ts` — `blockBg` atom modified for agent bgcolor
-
-If none of the watch files are touched, merge is safe:
-
-```bash
-git merge upstream/main
-```
+Forked at Wave v0.14.1-beta.0. Last synced: v0.14.1.
 
 ---
-
-### Sponsoring Wave ❤️
-
-If Wave Terminal is useful to you or your company, consider sponsoring development.
-
-Sponsorship helps support the time spent building and maintaining the project.
-
-- https://github.com/sponsors/wavetermdev
 
 ## License
 
-Terminus is licensed under the Apache-2.0 License, same as upstream Wave Terminal. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for dependency information.
-
----
-
-## Changelog
-
-### 2026-03-04 — `718fb157` — Dev Servers Panel
-
-- New sidebar widget: Dev Servers panel
-- Scans listening TCP ports 3000-9999 for dev server processes
-- Resolves project names from process file descriptors
-- Color-coded port badges by port range
-- Open button launches localhost URL in default browser
-- Kill button terminates process by port, Kill All for batch
-- Auto-refresh every 30 seconds with manual refresh
-
-### 2026-03-04 — `81fae4d9` — Crew Manager + ForceRestart Session Switching
-
-- New sidebar widget: Crew Manager panel with live tmux session monitoring
-- Active/Inactive sections with avatars, roles, status dots, uptime
-- Attach, Launch, Kill per agent; Launch All / Kill All batch controls
-- Replaced keystroke injection (ControllerInputCommand) with ForceRestart pattern
-- Agent switching now uses `cmd:initscript.zsh` + `ControllerResyncCommand(forcerestart=true)`
-- Works reliably regardless of what the terminal is running
-- Added `exec-command` IPC handler for shell command execution from renderer
-- Added `agent:name`, `agent:color`, `agent:role` to block MetaType
-
-### 2026-03-04 — `848878fc` — Agent Themes & Preferences
-
-- Per-agent terminal theme switching via `term:theme` metadata
-- Per-agent background color override via `term:bgcolor`
-- Color picker component (react-colorful) for live bgcolor adjustment
-- Agent preferences persist to `agent-preferences.json` — saved on switch-out, restored on switch-in
-- Tmux session switching via header dropdown
-
-### 2026-03-04 — `bd466a74` — Terminus Fork + Agent Pane Headers
-
-- Forked Wave Terminal v0.14.1-beta.0 as Terminus
-- Renamed all user-facing strings (package.json, electron-builder, menus, Go backend, Taskfile)
-- Migrated config/data directories from Wave to Terminus
-- Agent pane headers: per-block agent assignment with name, role, avatar, colored border
-- Typeahead modal for agent selection with fuzzy search
-- 32px circular avatars loaded via IPC base64 bridge
-- Static agent registry with 16 crew members
-- Agent color table with roles and theme assignments
+Apache-2.0. See [ACKNOWLEDGEMENTS.md](./ACKNOWLEDGEMENTS.md) for dependency information.
