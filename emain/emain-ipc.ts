@@ -501,8 +501,8 @@ export function initIpcHandlers() {
         }
     });
 
-    electron.ipcMain.handle("pick-directory", async (_event, title?: string) => {
-        const ww = focusedWaveWindow;
+    electron.ipcMain.handle("pick-directory", async (event, title?: string) => {
+        const ww = getWaveWindowByWebContentsId(event.sender.id) ?? focusedWaveWindow;
         if (ww == null) return null;
         const result = await electron.dialog.showOpenDialog(ww, {
             title: title || "Select Directory",

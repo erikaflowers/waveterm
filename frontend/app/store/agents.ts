@@ -122,7 +122,12 @@ async function loadAvatarDataUrl(filePath: string): Promise<string | null> {
 function getAgentInfo(name: string): AgentInfo | null {
     if (!name) return null;
     const agents = globalStore.get(agentsAtom);
-    return agents.find((a) => a.name.toLowerCase() === name.toLowerCase()) ?? null;
+    const agent = agents.find((a) => a.name.toLowerCase() === name.toLowerCase()) ?? null;
+    if (agent) {
+        // Resolve avatar path dynamically (prefs may have loaded after agent list was built)
+        agent.avatarPath = getAvatarPath(agent.name);
+    }
+    return agent;
 }
 
 function getAgentColor(name: string): string | null {
