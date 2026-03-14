@@ -23,6 +23,7 @@ import { MatrixViewModel } from "@/app/view/matrix/matrix";
 import { NodeGraphViewModel } from "@/app/view/nodegraph/nodegraph";
 import { OscilloscopeViewModel } from "@/app/view/oscilloscope/oscilloscope";
 import { UsageViewModel } from "@/app/view/usage/usage";
+import { WebStatsViewModel } from "@/app/view/webstats/webstats";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -78,6 +79,7 @@ BlockRegistry.set("matrix", MatrixViewModel);
 BlockRegistry.set("oscilloscope", OscilloscopeViewModel);
 BlockRegistry.set("hexdump", HexDumpViewModel);
 BlockRegistry.set("nodegraph", NodeGraphViewModel);
+BlockRegistry.set("webstats", WebStatsViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

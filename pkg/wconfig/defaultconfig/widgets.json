@@ -150,5 +150,15 @@
                 "view": "nodegraph"
             }
         }
+    },
+    "defwidget@webstats": {
+        "display:order": 6,
+        "icon": "chart-mixed",
+        "label": "web stats",
+        "blockdef": {
+            "meta": {
+                "view": "webstats"
+            }
+        }
     }
 }

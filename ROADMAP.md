@@ -1,86 +1,91 @@
-# Wave Terminal Roadmap
+# Terminus Roadmap
 
-This roadmap outlines major upcoming features and improvements for Wave Terminal. As with any roadmap, priorities and timelines may shift as development progresses.
+Internal roadmap for Terminus (WaveTerm fork), the multi-agent CLI multiplexer.
 
-Want input on the roadmap? Join the discussion on [Discord](https://discord.gg/XfvZ334gwU).
+Legend: ✅ Done | 🔧 In Progress | 🔷 Planned
 
-Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
+---
 
-## Current AI Capabilities
+## v1.0 Beta (2026-03-12)
 
-Wave Terminal's AI assistant is already powerful and continues to evolve. Here's what works today:
+### Agent System
+- ✅ Crew panel — agent list, remote config, avatar display
+- ✅ Agent switcher dropdown with tmux session attach
+- ✅ Agent color accents on pane headers
+- ✅ Agent preferences persistence (theme, bgcolor per agent)
+- ✅ ForceRestart pattern for reliable session switching
+- ✅ Re-select same agent to force reconnect (broken pipe recovery)
 
-### AI Provider Support
+### Remote / SSH
+- ✅ Local vs remote tmux path resolution
+- ✅ Auto-detect remote tmux path via SSH
+- ✅ `getTmuxCmd()` centralized helper
+- ✅ Remote tmux path override in crew panel UI
 
-- ✅ OpenAI (including gpt-5 and gpt-5-mini models)
-- ✅ Google Gemini (v0.13)
-- ✅ OpenRouter and custom OpenAI-compatible endpoints (v0.13)
-- ✅ Azure OpenAI (modern and legacy APIs) (v0.13)
-- ✅ Local AI models via Ollama, LM Studio, vLLM, and other OpenAI-compatible servers (v0.13)
+### Layout & UX
+- ✅ Accordion collapse for panes (vertical stacking only)
+- ✅ Settings opens as layout panel, not ephemeral modal
+- ✅ Dev/prod app coexistence (separate Electron instance lock)
 
-### Context & Input
+### Custom Panels
+- ✅ Fleet Activity Log — agent session logger with SQLite backend
+- ✅ Git Dashboard — repo scanner with fetch/pull/status
+- ✅ Node Graph — tmux session topology visualizer
+- ✅ Usage Dashboard — cost tracking
+- ✅ Hopper — multi-agent prompt dispatch with relay chains
 
-- ✅ Widget context integration - AI sees your open terminals, web views, and other widgets
-- ✅ Image and document upload - Attach images and files to conversations
-- ✅ Local file reading - Read text files and directory listings on local machine
-- ✅ Web search - Native web search capability for current information
-- ✅ Shell integration awareness - AI understands terminal state (shell, version, OS, etc.)
+### Build & Infra
+- ✅ Packaged app builds (ARM64 + x64 DMG)
+- ✅ wcloud endpoint warning instead of crash in dev mode
 
-### Widget Interaction Tools
+---
 
-- ✅ Widget screenshots - Capture visual state of any widget
-- ✅ Terminal scrollback access - Read terminal history and output
-- ✅ Web navigation - Control browser widgets
+## v1.1 — Post-Beta Polish
 
-## ROADMAP Enhanced AI Capabilities
+### Pane Status Indicators
+- 🔷 3-dot status in pane header: SSH / tmux / Claude Code
+- 🔷 Detect agent mismatch (metadata vs actual tmux session)
+- 🔷 Comment out unused ConnectionButton
 
-### AI Configuration & Flexibility
+### Accordion Collapse Refinements
+- 🔷 Minimum collapsed height = header bar height (pixel-aware)
+- 🔷 Collapse animation transition
 
-- ✅ BYOK (Bring Your Own Key) - Use your own API keys for any supported provider (v0.13)
-- ✅ Local AI agents - Run AI models locally on your machine (v0.13)
-- 🔧 Enhanced provider configuration options
-- 🔷 Context (add markdown files to give persistent system context)
+### Upstream Merge
+- 🔷 Cherry-pick Wave v0.14.2 bug fixes (zoom notifications, focus tracking)
+- 🔷 Evaluate v0.14.2 badge system for agent status integration
+- 🔷 Full upstream merge when conflict surface is manageable
 
-### Expanded Provider Support
+### Agent Workflow
+- 🔷 Hopper payload relay — clean end-to-end test
+- 🔷 Relay instruction tuning (agent refusal edge cases)
+- 🔷 Agent session auto-restart on disconnect
 
-- 🔷 Anthropic Claude - Full integration with extended thinking and tool use
+---
 
-### Advanced AI Tools
+## v1.2 — Fleet Intelligence
 
-#### File Operations
+### Status & Monitoring
+- 🔷 Agent heartbeat / liveness detection
+- 🔷 Fleet-wide git status summary
+- 🔷 Session duration and idle tracking
 
-- ✅ AI file writing with intelligent diff previews
-- ✅ Rollback support for AI-made changes
-- 🔷 Multi-file editing workflows
-- 🔷 Safe file modification patterns
+### Automation
+- 🔷 Scheduled relay chains (cron-style prompt dispatch)
+- 🔷 Agent task queue with priority
+- 🔷 Batch operations across agents
 
-#### Terminal Command Execution
+### UX
+- 🔷 Tab badges for agent activity (upstream badge system)
+- 🔷 Keyboard shortcuts for agent switching
+- 🔷 Layout templates (save/restore pane arrangements)
 
-- 🔧 Execute commands directly from AI
-- ✅ Intelligent terminal state detection
-- 🔧 Command result capture and parsing
+---
 
-### Remote & Advanced Capabilities
+## Ideas / Backlog
 
-- 🔷 Remote file operations - Read and write files on SSH connections
-- 🔷 Custom AI-powered widgets (Tsunami framework)
-- 🔷 AI Can spawn Wave Blocks
-- 🔷 Drag&Drop from Preview Widgets to Wave AI
-
-### Wave AI Widget Builder
-
-- 🔷 Visual builder for creating custom AI-powered widgets
-- 🔷 Template library for common AI workflows
-- 🔷 Rapid prototyping and iteration tools
-
-## Other Platform & UX Improvements (Non AI)
-
-- 🔷 Import/Export tab layouts and widgets
-- 🔧 Enhanced layout actions (splitting, replacing blocks)
-- 🔷 Extended drag & drop for files/URLs
-- 🔷 Tab templates for quick workspace setup
-- 🔷 Advanced keybinding customization
-  - 🔷 Widget launch shortcuts
-  - 🔷 System keybinding reassignment
-- 🔷 Command Palette
-- 🔷 Monaco Editor theming
+- Import/export tab layouts
+- Command palette for agent operations
+- Agent-specific keybindings
+- Mobile companion for fleet monitoring
+- Webhook integrations for relay chains
