@@ -1,0 +1,91 @@
+/* Terminus Design Tokens — Dark Cosmic Theme */
+:root {
+  /* Core palette */
+  --color-void: #000000;
+  --color-abyss: #050510;
+  --color-deep: #0a0a1a;
+  --color-surface: #0f0f24;
+  --color-surface-raised: #141432;
+  --color-surface-hover: #1a1a40;
+  --color-border: rgba(139, 92, 246, 0.15);
+  --color-border-bright: rgba(139, 92, 246, 0.35);
+
+  /* Purple spectrum */
+  --color-purple-900: #1e1b4b;
+  --color-purple-800: #2e1065;
+  --color-purple-700: #4c1d95;
+  --color-purple-600: #6d28d9;
+  --color-purple-500: #8b5cf6;
+  --color-purple-400: #a78bfa;
+  --color-purple-300: #c4b5fd;
+  --color-purple-200: #ddd6fe;
+
+  /* Accent spectrum */
+  --color-magenta: #e879f9;
+  --color-pink: #f472b6;
+  --color-cyan: #22d3ee;
+  --color-emerald: #34d399;
+
+  /* Text */
+  --color-text-primary: #f0eef6;
+  --color-text-secondary: rgba(240, 238, 246, 0.6);
+  --color-text-muted: rgba(240, 238, 246, 0.35);
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(135deg, #6d28d9 0%, #e879f9 50%, #22d3ee 100%);
+  --gradient-purple: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%);
+  --gradient-glow: linear-gradient(135deg, #8b5cf6 0%, #e879f9 50%, #22d3ee 100%);
+  --gradient-surface: linear-gradient(180deg, #0a0a1a 0%, #050510 100%);
+  --gradient-card: linear-gradient(145deg, rgba(139, 92, 246, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+  --space-5xl: 128px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 4.5rem;
+  --text-7xl: 6rem;
+
+  /* Borders */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-glow-sm: 0 0 20px rgba(139, 92, 246, 0.15);
+  --shadow-glow-md: 0 0 40px rgba(139, 92, 246, 0.2);
+  --shadow-glow-lg: 0 0 80px rgba(139, 92, 246, 0.25);
+  --shadow-glow-xl: 0 0 120px rgba(139, 92, 246, 0.3);
+  --shadow-glow-purple: 0 0 60px rgba(139, 92, 246, 0.4);
+  --shadow-glow-magenta: 0 0 60px rgba(232, 121, 249, 0.3);
+  --shadow-glow-cyan: 0 0 60px rgba(34, 211, 238, 0.3);
+  --shadow-card: 0 4px 60px rgba(0, 0, 0, 0.5);
+
+  /* Transitions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 800ms;
+}
