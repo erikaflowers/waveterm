@@ -31,16 +31,6 @@
             }
         }
     },
-    "defwidget@ai:disabled": {
-        "display:order": -2,
-        "icon": "sparkles",
-        "label": "ai",
-        "blockdef": {
-            "meta": {
-                "view": "waveai"
-            }
-        }
-    },
     "defwidget@sysinfo": {
         "display:order": -1,
         "icon": "chart-line",
@@ -158,6 +148,16 @@
         "blockdef": {
             "meta": {
                 "view": "webstats"
+            }
+        }
+    },
+    "defwidget@visualizer": {
+        "display:order": 7,
+        "icon": "music",
+        "label": "visualizer",
+        "blockdef": {
+            "meta": {
+                "view": "visualizer"
             }
         }
     }

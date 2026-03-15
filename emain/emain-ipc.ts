@@ -188,6 +188,19 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
 }
 
 export function initIpcHandlers() {
+    // Audio visualizer: auto-grant system audio capture via desktopCapturer
+    electron.session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+        electron.desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+            if (sources.length > 0) {
+                callback({ video: sources[0], audio: "loopback" });
+            } else {
+                callback({});
+            }
+        }).catch(() => {
+            callback({});
+        });
+    });
+
     electron.ipcMain.on("open-external", (event, url) => {
         if (url && typeof url === "string") {
             fireAndForget(() =>

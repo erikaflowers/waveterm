@@ -73,6 +73,7 @@ const config = {
             NSCalendarsUsageDescription: "A CLI application running in Terminus wants to use Calendar data.",
             NSLocationUsageDescription: "A CLI application running in Terminus wants to use your location information.",
             NSAppleEventsUsageDescription: "A CLI application running in Terminus wants to use AppleScript.",
+            NSScreenCaptureUsageDescription: "Terminus needs screen capture access to capture system audio for the audio visualizer.",
         },
     },
     linux: {

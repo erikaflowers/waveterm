@@ -398,6 +398,12 @@ async function appMain() {
         console.log("disabling hardware acceleration, per launch settings");
         electronApp.disableHardwareAcceleration();
     }
+    // Enable macOS system audio loopback for the audio visualizer
+    electronApp.commandLine.appendSwitch(
+        "enable-features",
+        "MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride"
+    );
+
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
