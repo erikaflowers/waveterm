@@ -5,7 +5,9 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { getApi, WOS } from "@/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getApi, globalStore, WOS } from "@/store/global";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -891,6 +893,17 @@ function createDrawFn(state: AudioState): DrawFunction {
         ctx.fillStyle = BG_DARK;
         ctx.fillRect(0, 0, width, height);
 
+        // Seismic shake on intense bass
+        let shakeX = 0, shakeY = 0;
+        if (state.bassEnergy > 0.45 || state.bassHitDecay > 0.3) {
+            const intensity = Math.max(state.bassEnergy - 0.4, 0) * 5 + state.bassHitDecay * 0.5;
+            const shake = clamp(intensity, 0, 1);
+            shakeX = (Math.random() - 0.5) * shake * 6;
+            shakeY = (Math.random() - 0.5) * shake * 4;
+            ctx.save();
+            ctx.translate(shakeX, shakeY);
+        }
+
         drawNoiseFloor(ctx, width, height);
 
         if (state.connected) {
@@ -939,6 +952,33 @@ function createDrawFn(state: AudioState): DrawFunction {
 
         drawNowPlaying(ctx, state.nowPlaying, width, height);
         drawCrtOverlay(ctx, width, height);
+
+        // Restore shake transform
+        if (shakeX !== 0 || shakeY !== 0) {
+            ctx.restore();
+        }
+
+        // Static snow on intense bass — specs of white/colored noise
+        if (state.bassEnergy > 0.4 || state.bassHitDecay > 0.4) {
+            const snowIntensity = clamp(
+                Math.max(state.bassEnergy - 0.35, 0) * 4 + state.bassHitDecay * 0.6,
+                0, 1
+            );
+            const numSpecs = Math.floor(snowIntensity * 120);
+            for (let i = 0; i < numSpecs; i++) {
+                const sx = Math.random() * width;
+                const sy = Math.random() * height;
+                const bright = 0.15 + Math.random() * snowIntensity * 0.6;
+                // Mix of white and color-tinted snow
+                if (Math.random() < 0.7) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${bright})`;
+                } else {
+                    ctx.fillStyle = hexRgba(state.colorLowBright, bright);
+                }
+                const sz = Math.random() < 0.9 ? 1 : 2;
+                ctx.fillRect(sx, sy, sz, sz);
+            }
+        }
 
         // Mode label (top right)
         ctx.font = "8px 'JetBrains Mono', monospace";
@@ -1047,7 +1087,7 @@ function useNowPlaying(stateRef: React.RefObject<AudioState>): void {
 
 // --- Viz Controls (Colors + Attack/Release) ---
 
-const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: boolean }> = ({ stateRef, split }) => {
+const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: boolean; blockId: string }> = ({ stateRef, split, blockId }) => {
     const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0);
     const st = stateRef.current;
     if (!st) return null;
@@ -1055,6 +1095,7 @@ const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: bool
     const sync = (key: string, val: string | number) => {
         (st as any)[key] = val;
         forceUpdate();
+        saveVizMeta(blockId, { [key]: val });
     };
 
     const colorInput = (val: string, key: string) => (
@@ -1160,12 +1201,16 @@ const FreqRangeSlider: React.FC<{
     stateRef: React.RefObject<AudioState>;
     split: boolean;
     onSplitChange: (v: boolean) => void;
-}> = ({ stateRef, split, onSplitChange }) => {
-    const [low, setLow] = React.useState(30);
-    const [high, setHigh] = React.useState(16000);
-    const [crossover, setCrossover] = React.useState(250);
+    blockId: string;
+}> = ({ stateRef, split, onSplitChange, blockId }) => {
+    const initLow = stateRef.current?.freqLow ?? 30;
+    const initHigh = stateRef.current?.freqHigh ?? 16000;
+    const initCross = stateRef.current?.crossover ?? 250;
+    const [low, setLow] = React.useState(initLow);
+    const [high, setHigh] = React.useState(initHigh);
+    const [crossover, setCrossover] = React.useState(initCross);
     const trackRef = React.useRef<HTMLDivElement>(null);
-    const valsRef = React.useRef({ low: 30, high: 16000, crossover: 250 });
+    const valsRef = React.useRef({ low: initLow, high: initHigh, crossover: initCross });
 
     const handleThumbDown = (thumb: "low" | "high" | "cross") => (e: React.PointerEvent) => {
         e.stopPropagation();
@@ -1201,6 +1246,8 @@ const FreqRangeSlider: React.FC<{
         const up = () => {
             document.removeEventListener("pointermove", move);
             document.removeEventListener("pointerup", up);
+            const v = valsRef.current;
+            saveVizMeta(blockId, { freqLow: v.low, freqHigh: v.high, crossover: v.crossover });
         };
 
         document.addEventListener("pointermove", move);
@@ -1214,6 +1261,7 @@ const FreqRangeSlider: React.FC<{
         if (stateRef.current) {
             stateRef.current.splitMode = next;
         }
+        saveVizMeta(blockId, { splitMode: next });
     };
 
     const lowPos = freqToPos(low) * 100;
@@ -1374,6 +1422,42 @@ const FreqRangeSlider: React.FC<{
     );
 };
 
+// --- Settings Persistence ---
+
+const VIZ_META_KEYS = [
+    "mode", "freqLow", "freqHigh", "crossover", "splitMode",
+    "colorLowDim", "colorLowBright", "colorHighDim", "colorHighBright",
+    "attack", "release", "lowAttack", "lowRelease", "highAttack", "highRelease",
+] as const;
+
+function saveVizMeta(blockId: string, meta: Record<string, any>): void {
+    const prefixed: Record<string, any> = {};
+    for (const [k, v] of Object.entries(meta)) {
+        prefixed[k.startsWith("viz:") ? k : `viz:${k}`] = v;
+    }
+    RpcApi.SetMetaCommand(TabRpcClient, {
+        oref: WOS.makeORef("block", blockId),
+        meta: prefixed,
+    });
+}
+
+function loadVizSettings(blockAtom: jotai.Atom<Block>, state: AudioState): { split: boolean; mode: VizMode } {
+    const blockData = globalStore.get(blockAtom);
+    const meta = blockData?.meta;
+    let split = state.splitMode;
+    let mode = state.mode;
+    if (!meta) return { split, mode };
+    for (const key of VIZ_META_KEYS) {
+        const val = meta[`viz:${key}`];
+        if (val != null) {
+            (state as any)[key] = val;
+        }
+    }
+    split = state.splitMode;
+    mode = state.mode;
+    return { split, mode };
+}
+
 // --- ViewModel ---
 
 class VisualizerViewModel implements ViewModel {
@@ -1418,7 +1502,10 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
     const { canvasRef, containerRef, width, height } = useCanvasSetup();
     const stateRef = React.useRef(new AudioState());
     const [connected, setConnected] = React.useState(false);
-    const [split, setSplit] = React.useState(false);
+
+    // Load saved settings from block metadata
+    const saved = React.useMemo(() => loadVizSettings(model.blockAtom, stateRef.current), []);
+    const [split, setSplit] = React.useState(saved.split);
 
     // Now Playing metadata polling
     useNowPlaying(stateRef);
@@ -1430,6 +1517,7 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
             const state = stateRef.current;
             const idx = modes.indexOf(state.mode);
             state.mode = modes[(idx + 1) % modes.length];
+            saveVizMeta(model.blockId, { mode: state.mode });
         };
         window.addEventListener("visualizer:cycle-mode", handler);
         return () => window.removeEventListener("visualizer:cycle-mode", handler);
@@ -1468,8 +1556,8 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
             }}
         >
             <canvas ref={canvasRef} style={{ display: "block" }} />
-            {connected && <VizControls stateRef={stateRef} split={split} />}
-            {connected && <FreqRangeSlider stateRef={stateRef} split={split} onSplitChange={setSplit} />}
+            {connected && <VizControls stateRef={stateRef} split={split} blockId={model.blockId} />}
+            {connected && <FreqRangeSlider stateRef={stateRef} split={split} onSplitChange={setSplit} blockId={model.blockId} />}
         </div>
     );
 });
