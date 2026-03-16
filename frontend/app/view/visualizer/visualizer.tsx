@@ -5,9 +5,7 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getApi, globalStore, WOS } from "@/store/global";
+import { getApi, WOS } from "@/store/global";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -1087,7 +1085,7 @@ function useNowPlaying(stateRef: React.RefObject<AudioState>): void {
 
 // --- Viz Controls (Colors + Attack/Release) ---
 
-const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: boolean; blockId: string }> = ({ stateRef, split, blockId }) => {
+const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: boolean }> = ({ stateRef, split }) => {
     const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0);
     const st = stateRef.current;
     if (!st) return null;
@@ -1095,7 +1093,7 @@ const VizControls: React.FC<{ stateRef: React.RefObject<AudioState>; split: bool
     const sync = (key: string, val: string | number) => {
         (st as any)[key] = val;
         forceUpdate();
-        saveVizMeta(blockId, { [key]: val });
+        saveVizMeta({ [key]: val });
     };
 
     const colorInput = (val: string, key: string) => (
@@ -1201,8 +1199,7 @@ const FreqRangeSlider: React.FC<{
     stateRef: React.RefObject<AudioState>;
     split: boolean;
     onSplitChange: (v: boolean) => void;
-    blockId: string;
-}> = ({ stateRef, split, onSplitChange, blockId }) => {
+}> = ({ stateRef, split, onSplitChange }) => {
     const initLow = stateRef.current?.freqLow ?? 30;
     const initHigh = stateRef.current?.freqHigh ?? 16000;
     const initCross = stateRef.current?.crossover ?? 250;
@@ -1247,7 +1244,7 @@ const FreqRangeSlider: React.FC<{
             document.removeEventListener("pointermove", move);
             document.removeEventListener("pointerup", up);
             const v = valsRef.current;
-            saveVizMeta(blockId, { freqLow: v.low, freqHigh: v.high, crossover: v.crossover });
+            saveVizMeta({ freqLow: v.low, freqHigh: v.high, crossover: v.crossover });
         };
 
         document.addEventListener("pointermove", move);
@@ -1261,7 +1258,7 @@ const FreqRangeSlider: React.FC<{
         if (stateRef.current) {
             stateRef.current.splitMode = next;
         }
-        saveVizMeta(blockId, { splitMode: next });
+        saveVizMeta({ splitMode: next });
     };
 
     const lowPos = freqToPos(low) * 100;
@@ -1422,39 +1419,63 @@ const FreqRangeSlider: React.FC<{
     );
 };
 
-// --- Settings Persistence ---
+// --- Settings Persistence (file-based, survives panel close/reopen) ---
 
-const VIZ_META_KEYS = [
+const VIZ_SETTINGS_KEYS = [
     "mode", "freqLow", "freqHigh", "crossover", "splitMode",
     "colorLowDim", "colorLowBright", "colorHighDim", "colorHighBright",
     "attack", "release", "lowAttack", "lowRelease", "highAttack", "highRelease",
 ] as const;
 
-function saveVizMeta(blockId: string, meta: Record<string, any>): void {
-    const prefixed: Record<string, any> = {};
-    for (const [k, v] of Object.entries(meta)) {
-        prefixed[k.startsWith("viz:") ? k : `viz:${k}`] = v;
-    }
-    RpcApi.SetMetaCommand(TabRpcClient, {
-        oref: WOS.makeORef("block", blockId),
-        meta: prefixed,
-    });
+function getVizPrefsPath(): string {
+    const configDir = getApi().getConfigDir();
+    return configDir + "/visualizer-prefs.json";
 }
 
-function loadVizSettings(blockAtom: jotai.Atom<Block>, state: AudioState): { split: boolean; mode: VizMode } {
-    const blockData = globalStore.get(blockAtom);
-    const meta = blockData?.meta;
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+let _pendingSave: Record<string, any> = {};
+
+function saveVizSetting(key: string, val: any): void {
+    _pendingSave[key] = val;
+    if (_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(async () => {
+        const path = getVizPrefsPath();
+        try {
+            const existing = await getApi().readTextFile(path);
+            const prefs = existing ? JSON.parse(existing) : {};
+            Object.assign(prefs, _pendingSave);
+            _pendingSave = {};
+            await getApi().writeTextFile(path, JSON.stringify(prefs, null, 2));
+        } catch (e) {
+            console.warn("[visualizer] failed to save prefs:", e);
+        }
+    }, 300);
+}
+
+function saveVizMeta(meta: Record<string, any>): void {
+    for (const [k, v] of Object.entries(meta)) {
+        saveVizSetting(k, v);
+    }
+}
+
+async function loadVizSettingsFromFile(state: AudioState): Promise<{ split: boolean; mode: VizMode }> {
     let split = state.splitMode;
     let mode = state.mode;
-    if (!meta) return { split, mode };
-    for (const key of VIZ_META_KEYS) {
-        const val = meta[`viz:${key}`];
-        if (val != null) {
-            (state as any)[key] = val;
+    try {
+        const path = getVizPrefsPath();
+        const raw = await getApi().readTextFile(path);
+        if (!raw) return { split, mode };
+        const prefs = JSON.parse(raw);
+        for (const key of VIZ_SETTINGS_KEYS) {
+            if (prefs[key] != null) {
+                (state as any)[key] = prefs[key];
+            }
         }
+        split = state.splitMode;
+        mode = state.mode;
+    } catch (e) {
+        console.warn("[visualizer] failed to load prefs:", e);
     }
-    split = state.splitMode;
-    mode = state.mode;
     return { split, mode };
 }
 
@@ -1502,10 +1523,14 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
     const { canvasRef, containerRef, width, height } = useCanvasSetup();
     const stateRef = React.useRef(new AudioState());
     const [connected, setConnected] = React.useState(false);
+    const [split, setSplit] = React.useState(false);
 
-    // Load saved settings from block metadata
-    const saved = React.useMemo(() => loadVizSettings(model.blockAtom, stateRef.current), []);
-    const [split, setSplit] = React.useState(saved.split);
+    // Load saved settings from file on mount
+    React.useEffect(() => {
+        loadVizSettingsFromFile(stateRef.current).then(({ split: s }) => {
+            setSplit(s);
+        });
+    }, []);
 
     // Now Playing metadata polling
     useNowPlaying(stateRef);
@@ -1517,7 +1542,7 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
             const state = stateRef.current;
             const idx = modes.indexOf(state.mode);
             state.mode = modes[(idx + 1) % modes.length];
-            saveVizMeta(model.blockId, { mode: state.mode });
+            saveVizMeta({ mode: state.mode });
         };
         window.addEventListener("visualizer:cycle-mode", handler);
         return () => window.removeEventListener("visualizer:cycle-mode", handler);
@@ -1556,8 +1581,8 @@ const VisualizerView: React.FC<ViewComponentProps<VisualizerViewModel>> = React.
             }}
         >
             <canvas ref={canvasRef} style={{ display: "block" }} />
-            {connected && <VizControls stateRef={stateRef} split={split} blockId={model.blockId} />}
-            {connected && <FreqRangeSlider stateRef={stateRef} split={split} onSplitChange={setSplit} blockId={model.blockId} />}
+            {connected && <VizControls stateRef={stateRef} split={split} />}
+            {connected && <FreqRangeSlider stateRef={stateRef} split={split} onSplitChange={setSplit} />}
         </div>
     );
 });

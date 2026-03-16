@@ -316,8 +316,8 @@ function App() {
             The Agent Mothership
           </p>
           <p className="hero-desc">
-            Mission control for your AI agent crew. Monitor, dispatch, and coordinate
-            multiple AI agents running in parallel — all from one unified terminal interface.
+            A terminal built to run AI agent teams. Name your agents, assign them roles,
+            dispatch prompts, and monitor everything from one screen.
           </p>
           <div className="hero-actions">
             <a href="https://github.com/erikaflowers/terminus" className="btn btn-primary" target="_blank" rel="noopener noreferrer">
@@ -350,10 +350,10 @@ function App() {
 
       {/* ─── STATS BAR ─── */}
       <section className="stats-bar">
-        <StatBlock value="Your" label="Agents, Your Names" delay={0} />
-        <StatBlock value="8" label="Custom Panels" delay={100} />
-        <StatBlock value="1" label="Interface" delay={200} />
-        <StatBlock value="0" label="Context Switching" delay={300} />
+        <StatBlock value="N" label="Named Agents" delay={0} />
+        <StatBlock value="8" label="Built-in Panels" delay={100} />
+        <StatBlock value="1" label="Screen" delay={200} />
+        <StatBlock value="0" label="Tab Switching" delay={300} />
       </section>
 
       {/* ─── WHAT IS IT ─── */}
@@ -361,14 +361,13 @@ function App() {
         <div className="section-inner">
           <div className="section-label">What is Terminus?</div>
           <h2 className="section-title">
-            One terminal to <span className="gradient-text">rule them all</span>
+            One terminal for <span className="gradient-text">your entire fleet</span>
           </h2>
           <p className="section-desc section-desc-wide">
-            Terminus is an open-source Electron terminal built on <a href="https://waveterm.dev" target="_blank" rel="noopener noreferrer" className="inline-link">Wave Terminal</a>.
-            It extends the block-based tiling layout with a complete agent identity system — every terminal pane
-            gets a named AI agent with its own avatar, color accent, and persistent tmux session.
-            Switch between agents instantly. Monitor your entire fleet in real-time.
-            Dispatch prompts to one agent and watch them relay to the next.
+            An open-source Electron terminal forked from <a href="https://waveterm.dev" target="_blank" rel="noopener noreferrer" className="inline-link">Wave Terminal</a>.
+            Every terminal pane gets a named AI agent with its own avatar, color, and persistent session.
+            Switch agents instantly. Monitor your fleet in real-time. Send a prompt to one agent
+            and have it pass results to the next.
           </p>
           <div className="what-grid">
             <div className="what-card">
@@ -389,8 +388,8 @@ function App() {
               <div className="what-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
               </div>
-              <h3>Relay Chains</h3>
-              <p>Send a prompt to one agent, have it pass results to the next. Multi-agent workflows that execute like dominoes.</p>
+              <h3>Prompt Chains</h3>
+              <p>Send a prompt to one agent and have it pass results to the next. Multi-step workflows that execute like dominoes.</p>
             </div>
           </div>
         </div>
@@ -427,7 +426,7 @@ function App() {
             <FeatureCard
               icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
               title="Crew Manager"
-              description="See every agent, their tmux session status, avatars, and remote SSH config. Launch, attach, or kill sessions with one click."
+              description="See every agent, their session status, avatars, and remote config. Launch, attach, or kill sessions with one click."
               accent="var(--color-purple-500)"
               delay={0}
             />
@@ -449,7 +448,7 @@ function App() {
             <FeatureCard
               icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>}
               title="Hopper"
-              description="The dispatch console. Send prompts to any agent, build relay chains for multi-agent workflows, save macros for repeat jobs."
+              description="The prompt dispatch console. Send a prompt to any agent, chain prompts across agents in sequence, and save macros for repeat workflows."
               accent="var(--color-magenta)"
               delay={300}
             />
@@ -477,7 +476,7 @@ function App() {
             <FeatureCard
               icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="3" /><circle cx="19" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><path d="M14.5 9.5L17 7" /><path d="M9.5 14.5L7 17" /><circle cx="5" cy="5" r="2" /><path d="M9.5 9.5L7 7" /></svg>}
               title="Node Graph"
-              description="Visualize your tmux session topology. See which agents are connected, which sessions are active, and how they relate."
+              description="Visualize your session topology. See which agents are connected, which sessions are active, and how they relate."
               accent="var(--color-cyan)"
               delay={700}
             />
@@ -564,7 +563,7 @@ function App() {
         <div className="section-inner">
           <div className="section-label">Under the Hood</div>
           <h2 className="section-title">
-            Built on <span className="gradient-text">battle-tested</span> foundations
+            What's <span className="gradient-text">under the hood</span>
           </h2>
           <div className="tech-grid">
             <div className="tech-card">
@@ -581,7 +580,7 @@ function App() {
             </div>
             <div className="tech-card">
               <div className="tech-name">tmux</div>
-              <div className="tech-desc">Agent sessions persist through disconnects and restarts</div>
+              <div className="tech-desc">Agent sessions persist across disconnects and restarts</div>
             </div>
             <div className="tech-card">
               <div className="tech-name">SQLite</div>
@@ -589,7 +588,7 @@ function App() {
             </div>
             <div className="tech-card">
               <div className="tech-name">SSH Native</div>
-              <div className="tech-desc">Remote agent sessions with auto-detected tmux paths</div>
+              <div className="tech-desc">Run agents on remote machines over SSH</div>
             </div>
           </div>
         </div>
@@ -602,8 +601,7 @@ function App() {
           <img src={cubeImg} alt="" className="cta-cube" />
           <h2 className="cta-title">Ready to command the fleet?</h2>
           <p className="cta-desc">
-            Terminus is free, open-source, and built for people who run AI agents
-            like they mean it. macOS. Beta 1. Right now.
+            Free and open-source. macOS. Beta 1. Right now.
           </p>
           <div className="cta-actions">
             <a href="https://github.com/erikaflowers/terminus" className="btn btn-primary btn-lg" target="_blank" rel="noopener noreferrer">
@@ -616,8 +614,8 @@ function App() {
           </div>
           <div className="cta-docs-note">
             <p>
-              Terminus is built for developers comfortable with the terminal, tmux, and AI agent workflows.
-              New to this? <a href="#/docs" className="inline-link">Read the detailed setup guide</a> before you dive in.
+              Built for developers who already run AI agents.
+              New to Terminus? <a href="#/docs" className="inline-link">Start with the setup guide</a>.
             </p>
           </div>
         </div>

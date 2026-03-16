@@ -89,6 +89,23 @@ const (
 
 	MetaKey_SysinfoType                      = "sysinfo:type"
 
+	MetaKey_VizClear                         = "viz:*"
+	MetaKey_VizMode                          = "viz:mode"
+	MetaKey_VizFreqLow                       = "viz:freqLow"
+	MetaKey_VizFreqHigh                      = "viz:freqHigh"
+	MetaKey_VizCrossover                     = "viz:crossover"
+	MetaKey_VizSplitMode                     = "viz:splitMode"
+	MetaKey_VizColorLowDim                   = "viz:colorLowDim"
+	MetaKey_VizColorLowBrt                   = "viz:colorLowBright"
+	MetaKey_VizColorHighDim                  = "viz:colorHighDim"
+	MetaKey_VizColorHighBrt                  = "viz:colorHighBright"
+	MetaKey_VizAttack                        = "viz:attack"
+	MetaKey_VizRelease                       = "viz:release"
+	MetaKey_VizLowAttack                     = "viz:lowAttack"
+	MetaKey_VizLowRelease                    = "viz:lowRelease"
+	MetaKey_VizHighAttack                    = "viz:highAttack"
+	MetaKey_VizHighRelease                   = "viz:highRelease"
+
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"

@@ -1,16 +1,16 @@
-/* Terminus Design Tokens — Dark Cosmic Theme */
+/* Terminus Design Tokens — Command Center Theme */
 :root {
-  /* Core palette */
-  --color-void: #000000;
-  --color-abyss: #050510;
-  --color-deep: #0a0a1a;
-  --color-surface: #0f0f24;
-  --color-surface-raised: #141432;
-  --color-surface-hover: #1a1a40;
-  --color-border: rgba(139, 92, 246, 0.15);
-  --color-border-bright: rgba(139, 92, 246, 0.35);
+  /* Core palette — warm-tinted darks */
+  --color-void: #030303;
+  --color-abyss: #06060b;
+  --color-deep: #0b0b12;
+  --color-surface: #10101c;
+  --color-surface-raised: #16162a;
+  --color-surface-hover: #1e1e38;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-bright: rgba(255, 255, 255, 0.12);
 
-  /* Purple spectrum */
+  /* Purple spectrum — retained as secondary */
   --color-purple-900: #1e1b4b;
   --color-purple-800: #2e1065;
   --color-purple-700: #4c1d95;
@@ -20,23 +20,35 @@
   --color-purple-300: #c4b5fd;
   --color-purple-200: #ddd6fe;
 
-  /* Accent spectrum */
+  /* Signal color — amber/gold (primary accent) */
+  --color-amber-900: #451a03;
+  --color-amber-700: #92400e;
+  --color-amber-600: #b45309;
+  --color-amber-500: #d97706;
+  --color-amber: #f59e0b;
+  --color-amber-400: #fbbf24;
+  --color-amber-300: #fcd34d;
+  --color-amber-200: #fde68a;
+  --color-signal: var(--color-amber);
+
+  /* Other accents */
   --color-magenta: #e879f9;
   --color-pink: #f472b6;
   --color-cyan: #22d3ee;
   --color-emerald: #34d399;
 
-  /* Text */
-  --color-text-primary: #f0eef6;
-  --color-text-secondary: rgba(240, 238, 246, 0.6);
-  --color-text-muted: rgba(240, 238, 246, 0.35);
+  /* Text — warmer tint */
+  --color-text-primary: #ede9e3;
+  --color-text-secondary: rgba(237, 233, 227, 0.55);
+  --color-text-muted: rgba(237, 233, 227, 0.3);
 
   /* Gradients */
   --gradient-hero: linear-gradient(135deg, #6d28d9 0%, #e879f9 50%, #22d3ee 100%);
   --gradient-purple: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%);
   --gradient-glow: linear-gradient(135deg, #8b5cf6 0%, #e879f9 50%, #22d3ee 100%);
-  --gradient-surface: linear-gradient(180deg, #0a0a1a 0%, #050510 100%);
-  --gradient-card: linear-gradient(145deg, rgba(139, 92, 246, 0.08) 0%, rgba(0, 0, 0, 0) 100%);
+  --gradient-amber: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+  --gradient-surface: linear-gradient(180deg, #0b0b12 0%, #06060b 100%);
+  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, rgba(0, 0, 0, 0) 100%);
 
   /* Spacing */
   --space-xs: 4px;
@@ -48,10 +60,12 @@
   --space-3xl: 64px;
   --space-4xl: 96px;
   --space-5xl: 128px;
+  --space-6xl: 192px;
 
   /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Ailerons', var(--font-sans);
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -64,26 +78,28 @@
   --text-5xl: 3.5rem;
   --text-6xl: 4.5rem;
   --text-7xl: 6rem;
+  --text-8xl: 8rem;
 
   /* Borders */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-glow-sm: 0 0 20px rgba(139, 92, 246, 0.15);
-  --shadow-glow-md: 0 0 40px rgba(139, 92, 246, 0.2);
-  --shadow-glow-lg: 0 0 80px rgba(139, 92, 246, 0.25);
-  --shadow-glow-xl: 0 0 120px rgba(139, 92, 246, 0.3);
-  --shadow-glow-purple: 0 0 60px rgba(139, 92, 246, 0.4);
-  --shadow-glow-magenta: 0 0 60px rgba(232, 121, 249, 0.3);
-  --shadow-glow-cyan: 0 0 60px rgba(34, 211, 238, 0.3);
-  --shadow-card: 0 4px 60px rgba(0, 0, 0, 0.5);
+  --shadow-glow-sm: 0 0 20px rgba(245, 158, 11, 0.1);
+  --shadow-glow-md: 0 0 40px rgba(245, 158, 11, 0.15);
+  --shadow-glow-lg: 0 0 80px rgba(245, 158, 11, 0.2);
+  --shadow-glow-xl: 0 0 120px rgba(245, 158, 11, 0.25);
+  --shadow-glow-purple: 0 0 60px rgba(139, 92, 246, 0.3);
+  --shadow-glow-magenta: 0 0 60px rgba(232, 121, 249, 0.2);
+  --shadow-glow-cyan: 0 0 60px rgba(34, 211, 238, 0.2);
+  --shadow-card: 0 4px 60px rgba(0, 0, 0, 0.6);
 
   /* Transitions */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
   --duration-fast: 200ms;
   --duration-normal: 400ms;

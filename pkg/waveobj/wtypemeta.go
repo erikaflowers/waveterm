@@ -91,6 +91,24 @@ type MetaTSType struct {
 
 	SysinfoType string `json:"sysinfo:type,omitempty"`
 
+	// for visualizer
+	VizClear         bool    `json:"viz:*,omitempty"`
+	VizMode          string  `json:"viz:mode,omitempty"`
+	VizFreqLow       float64 `json:"viz:freqLow,omitempty"`
+	VizFreqHigh      float64 `json:"viz:freqHigh,omitempty"`
+	VizCrossover     float64 `json:"viz:crossover,omitempty"`
+	VizSplitMode     *bool   `json:"viz:splitMode,omitempty"`
+	VizColorLowDim   string  `json:"viz:colorLowDim,omitempty"`
+	VizColorLowBrt   string  `json:"viz:colorLowBright,omitempty"`
+	VizColorHighDim  string  `json:"viz:colorHighDim,omitempty"`
+	VizColorHighBrt  string  `json:"viz:colorHighBright,omitempty"`
+	VizAttack        float64 `json:"viz:attack,omitempty"`
+	VizRelease       float64 `json:"viz:release,omitempty"`
+	VizLowAttack     float64 `json:"viz:lowAttack,omitempty"`
+	VizLowRelease    float64 `json:"viz:lowRelease,omitempty"`
+	VizHighAttack    float64 `json:"viz:highAttack,omitempty"`
+	VizHighRelease   float64 `json:"viz:highRelease,omitempty"`
+
 	// for tabs
 	BgClear             bool    `json:"bg:*,omitempty"`
 	Bg                  string  `json:"bg,omitempty"`
