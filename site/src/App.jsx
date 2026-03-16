@@ -183,12 +183,45 @@ function AgentCard({ name, role, color, delay = 0 }) {
   );
 }
 
-/* ─── Stat counter ─── */
+/* ─── Stat counter with tick-up animation ─── */
 function StatBlock({ value, label, delay = 0 }) {
   const [ref, visible] = useReveal();
+  const [displayed, setDisplayed] = useState(value);
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (!visible || hasAnimated.current) return;
+    hasAnimated.current = true;
+
+    const numVal = parseInt(value, 10);
+    if (isNaN(numVal) || numVal === 0) {
+      // Non-numeric or zero — flash through symbols then land
+      const symbols = ['—', '·', value];
+      let i = 0;
+      const id = setInterval(() => {
+        setDisplayed(symbols[i]);
+        i++;
+        if (i >= symbols.length) clearInterval(id);
+      }, 120);
+      return () => clearInterval(id);
+    }
+
+    // Numeric — count up from 0
+    const duration = 800; // ms
+    const steps = Math.min(numVal, 20);
+    const stepTime = duration / steps;
+    let current = 0;
+    const id = setInterval(() => {
+      current++;
+      setDisplayed(String(current));
+      if (current >= numVal) clearInterval(id);
+    }, stepTime);
+    return () => clearInterval(id);
+  }, [visible, value]);
+
   return (
     <div ref={ref} className={`stat-block ${visible ? 'revealed' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
-      <div className="stat-value">{value}</div>
+      <div className="stat-value">{displayed}</div>
       <div className="stat-label">{label}</div>
     </div>
   );
@@ -253,6 +286,29 @@ function App() {
   const [crewRef, crewVisible] = useReveal();
   const [termRef, termVisible] = useReveal();
   const [ctaRef, ctaVisible] = useReveal();
+  const [heroGlitched, setHeroGlitched] = useState(false);
+
+  // One-time hero title glitch on load — remove class after animation so hover still works
+  useEffect(() => {
+    if (heroVisible && !heroGlitched) {
+      setHeroGlitched(true);
+      const timer = setTimeout(() => setHeroGlitched(false), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [heroVisible, heroGlitched]);
+
+  // Console easter egg for devs
+  useEffect(() => {
+    console.log(
+      '%c⬡ TERMINUS %c— The Agent Mothership',
+      'color: #f59e0b; font-size: 18px; font-weight: bold; font-family: monospace;',
+      'color: #ede9e3; font-size: 14px; font-family: monospace;'
+    );
+    console.log(
+      '%cFleet status: nominal. All agents standing by.\nhttps://github.com/erikaflowers/terminus',
+      'color: #34d399; font-size: 11px; font-family: monospace;'
+    );
+  }, []);
 
   /* Parallax on cube */
   const cubeContainerRef = useRef(null);
@@ -309,7 +365,7 @@ function App() {
             <span className="badge-dot" />
             Beta 1 is live — March 2026
           </div>
-          <h1 className="hero-title">
+          <h1 className={`hero-title ${heroGlitched ? 'glitch-intro' : ''}`}>
             <GlitchText>TERMINUS</GlitchText>
           </h1>
           <p className="hero-subtitle">

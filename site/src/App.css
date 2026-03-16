@@ -125,6 +125,11 @@ a {
   width: 28px;
   height: 28px;
   filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.4));
+  transition: transform 0.6s var(--ease-out-expo);
+}
+
+.nav-logo:hover .nav-cube {
+  transform: rotate(90deg);
 }
 
 .nav-wordmark {
@@ -147,10 +152,26 @@ a {
   transition: color 0.2s;
   font-weight: 500;
   letter-spacing: 0.02em;
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-amber);
+  transition: width 0.3s var(--ease-out-expo);
 }
 
 .nav-link:hover {
   color: var(--color-text-primary);
+}
+
+.nav-link:hover::after {
+  width: 100%;
 }
 
 .nav-link-active {
@@ -173,6 +194,12 @@ a {
   box-shadow: var(--shadow-glow-md);
 }
 
+.nav-cta:active {
+  transform: translateY(1px);
+  box-shadow: none;
+  transition-duration: 0.05s;
+}
+
 /* ══════════════════════════════════════════════════════
    HERO
    ══════════════════════════════════════════════════════ */
@@ -185,9 +212,6 @@ a {
   padding: var(--space-6xl) var(--space-xl) var(--space-5xl);
   gap: var(--space-3xl);
   z-index: 1;
-  overflow: hidden;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .hero::before {
@@ -402,6 +426,17 @@ a {
 }
 
 /* ══════════════════════════════════════════════════════
+   HERO GLITCH INTRO — one-time glitch on page load
+   ══════════════════════════════════════════════════════ */
+.hero-title.glitch-intro .glitch::before {
+  animation: glitchFlash1 0.4s ease-in-out 0.6s 1;
+}
+
+.hero-title.glitch-intro .glitch::after {
+  animation: glitchFlash2 0.4s ease-in-out 0.65s 1;
+}
+
+/* ══════════════════════════════════════════════════════
    GLITCH TEXT
    ══════════════════════════════════════════════════════ */
 .glitch {
@@ -422,31 +457,28 @@ a {
 }
 
 .glitch:hover::before {
-  animation: glitch1 0.3s ease-in-out;
-  opacity: 0.8;
-  color: var(--color-amber);
+  animation: glitchFlash1 0.3s ease-in-out;
 }
 
 .glitch:hover::after {
-  animation: glitch2 0.3s ease-in-out 0.05s;
-  opacity: 0.8;
-  color: var(--color-cyan);
+  animation: glitchFlash2 0.3s ease-in-out 0.05s;
 }
 
-@keyframes glitch1 {
-  0% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); }
-  25% { clip-path: inset(60% 0 10% 0); transform: translate(3px, -1px); }
-  50% { clip-path: inset(40% 0 30% 0); transform: translate(-2px, 1px); }
-  75% { clip-path: inset(10% 0 70% 0); transform: translate(2px, -2px); }
-  100% { clip-path: inset(50% 0 30% 0); transform: translate(0); }
+/* Glitch flash — opacity baked in so pseudo-elements disappear after animation */
+@keyframes glitchFlash1 {
+  0% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 2px); opacity: 0.8; color: var(--color-amber); }
+  25% { clip-path: inset(60% 0 10% 0); transform: translate(3px, -1px); opacity: 0.8; }
+  50% { clip-path: inset(40% 0 30% 0); transform: translate(-2px, 1px); opacity: 0.7; }
+  75% { clip-path: inset(10% 0 70% 0); transform: translate(2px, -2px); opacity: 0.4; }
+  100% { transform: translate(0); opacity: 0; }
 }
 
-@keyframes glitch2 {
-  0% { clip-path: inset(60% 0 20% 0); transform: translate(3px, -2px); }
-  25% { clip-path: inset(10% 0 60% 0); transform: translate(-3px, 1px); }
-  50% { clip-path: inset(30% 0 40% 0); transform: translate(2px, -1px); }
-  75% { clip-path: inset(70% 0 10% 0); transform: translate(-2px, 2px); }
-  100% { clip-path: inset(30% 0 50% 0); transform: translate(0); }
+@keyframes glitchFlash2 {
+  0% { clip-path: inset(60% 0 20% 0); transform: translate(3px, -2px); opacity: 0.8; color: var(--color-cyan); }
+  25% { clip-path: inset(10% 0 60% 0); transform: translate(-3px, 1px); opacity: 0.8; }
+  50% { clip-path: inset(30% 0 40% 0); transform: translate(2px, -1px); opacity: 0.7; }
+  75% { clip-path: inset(70% 0 10% 0); transform: translate(-2px, 2px); opacity: 0.4; }
+  100% { transform: translate(0); opacity: 0; }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -513,6 +545,11 @@ a {
   transform: translateY(-2px);
 }
 
+.btn:active {
+  transform: translateY(1px);
+  transition-duration: 0.05s;
+}
+
 .btn-primary {
   background: var(--color-amber);
   color: var(--color-void);
@@ -521,6 +558,10 @@ a {
 
 .btn-primary:hover {
   box-shadow: 0 0 40px rgba(245, 158, 11, 0.25);
+}
+
+.btn-primary:active {
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
 }
 
 .btn-glow {
@@ -573,6 +614,10 @@ a {
   display: flex;
   width: max-content;
   animation: tickerScroll 40s linear infinite;
+}
+
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
 }
 
 @keyframes tickerScroll {
@@ -781,8 +826,23 @@ a {
   padding: var(--space-3xl) var(--space-2xl);
 }
 
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--card-accent, var(--color-amber));
+  transition: width 0.5s var(--ease-out-expo);
+}
+
 .feature-card:hover {
   background: var(--color-deep);
+}
+
+.feature-card:hover::before {
+  width: 100%;
 }
 
 .feature-glow {
@@ -878,6 +938,12 @@ a {
   font-size: var(--text-lg);
   font-weight: 700;
   color: white;
+  box-shadow: 0 0 0 0 transparent;
+  transition: box-shadow 0.3s var(--ease-out-expo);
+}
+
+.agent-card:hover .agent-avatar {
+  box-shadow: 0 0 0 3px var(--color-abyss), 0 0 0 4px var(--agent-color), 0 0 16px var(--agent-color);
 }
 
 .agent-name {
@@ -900,6 +966,15 @@ a {
   border-radius: 50%;
   background: var(--agent-color);
   animation: dotPulse 2.5s ease-in-out infinite;
+  transition: box-shadow 0.3s, width 0.2s, height 0.2s;
+}
+
+.agent-card:hover .agent-pulse {
+  animation: none;
+  opacity: 1;
+  width: 6px;
+  height: 6px;
+  box-shadow: 0 0 8px var(--agent-color);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -941,6 +1016,12 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.dot:hover {
+  transform: scale(1.3);
+  filter: brightness(1.2);
 }
 .dot-red { background: #ff5f57; }
 .dot-yellow { background: #febc2e; }
@@ -957,6 +1038,14 @@ a {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 2;
+  animation: crtFlicker 4s ease-in-out infinite;
+}
+
+@keyframes crtFlicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.92; }
+  98% { opacity: 1; }
+  99% { opacity: 0.95; }
 }
 
 .term-line {
@@ -1016,6 +1105,12 @@ a {
   opacity: 0.4;
   line-height: 1;
   min-width: 60px;
+  transition: opacity 0.3s, text-shadow 0.3s;
+}
+
+.step:hover .step-number {
+  opacity: 0.8;
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
 }
 
 .step-content h3 {
@@ -1092,6 +1187,12 @@ a {
   margin-bottom: var(--space-xl);
   filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.3));
   animation: cubeFloat 6s ease-in-out infinite;
+  transition: transform 0.3s var(--ease-out-expo);
+}
+
+.cta-cube:hover {
+  transform: scale(1.15) rotate(15deg);
+  filter: drop-shadow(0 0 40px rgba(245, 158, 11, 0.5));
 }
 
 .cta-title {
@@ -1250,8 +1351,29 @@ a {
   color: var(--color-text-muted);
 }
 
+.footer-links a {
+  position: relative;
+  transition: color 0.2s;
+}
+
+.footer-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--color-amber);
+  opacity: 0.4;
+  transition: width 0.3s var(--ease-out-expo);
+}
+
 .footer-links a:hover {
   color: var(--color-text-primary);
+}
+
+.footer-links a:hover::after {
+  width: 100%;
 }
 
 .footer-copy {

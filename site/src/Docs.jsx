@@ -1,7 +1,23 @@
+import { useEffect } from 'react';
 import './Docs.css';
 import cubeImg from './assets/terminus-cube.png';
 
+function scrollToSection(e, id) {
+  e.preventDefault();
+  const el = document.getElementById(id);
+  if (el) {
+    const navHeight = 72;
+    const y = el.getBoundingClientRect().top + window.scrollY - navHeight;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
+}
+
 function Docs() {
+  // Scroll to top when docs page mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="docs">
       {/* Nav */}
@@ -27,21 +43,21 @@ function Docs() {
           <div className="docs-sidebar-inner">
             <h4 className="docs-sidebar-title">Documentation</h4>
             <ul className="docs-toc">
-              <li><a href="#/docs#prerequisites">Prerequisites</a></li>
-              <li><a href="#/docs#install">Installation</a></li>
-              <li><a href="#/docs#first-launch">First Launch</a></li>
-              <li><a href="#/docs#macos-gatekeeper">macOS Gatekeeper</a></li>
-              <li><a href="#/docs#settings">Settings & Preferences</a></li>
-              <li><a href="#/docs#agents">Configuring Agents</a></li>
-              <li><a href="#/docs#avatars">Agent Avatars</a></li>
-              <li><a href="#/docs#tmux">tmux Setup</a></li>
-              <li><a href="#/docs#git">Git Integration</a></li>
-              <li><a href="#/docs#fleet-log">Fleet Activity Log</a></li>
-              <li><a href="#/docs#hopper">Hopper & Relay Chains</a></li>
-              <li><a href="#/docs#remote">Remote Agents (SSH)</a></li>
-              <li><a href="#/docs#cloud-sync">Cloud Sync</a></li>
-              <li><a href="#/docs#build-from-source">Build from Source</a></li>
-              <li><a href="#/docs#troubleshooting">Troubleshooting</a></li>
+              <li><a href="#prerequisites" onClick={(e) => scrollToSection(e, 'prerequisites')}>Prerequisites</a></li>
+              <li><a href="#install" onClick={(e) => scrollToSection(e, 'install')}>Installation</a></li>
+              <li><a href="#first-launch" onClick={(e) => scrollToSection(e, 'first-launch')}>First Launch</a></li>
+              <li><a href="#macos-gatekeeper" onClick={(e) => scrollToSection(e, 'macos-gatekeeper')}>macOS Gatekeeper</a></li>
+              <li><a href="#settings" onClick={(e) => scrollToSection(e, 'settings')}>Settings & Preferences</a></li>
+              <li><a href="#agents" onClick={(e) => scrollToSection(e, 'agents')}>Configuring Agents</a></li>
+              <li><a href="#avatars" onClick={(e) => scrollToSection(e, 'avatars')}>Agent Avatars</a></li>
+              <li><a href="#tmux" onClick={(e) => scrollToSection(e, 'tmux')}>tmux Setup</a></li>
+              <li><a href="#git" onClick={(e) => scrollToSection(e, 'git')}>Git Integration</a></li>
+              <li><a href="#fleet-log" onClick={(e) => scrollToSection(e, 'fleet-log')}>Fleet Activity Log</a></li>
+              <li><a href="#hopper" onClick={(e) => scrollToSection(e, 'hopper')}>Hopper & Relay Chains</a></li>
+              <li><a href="#remote" onClick={(e) => scrollToSection(e, 'remote')}>Remote Agents (SSH)</a></li>
+              <li><a href="#cloud-sync" onClick={(e) => scrollToSection(e, 'cloud-sync')}>Cloud Sync</a></li>
+              <li><a href="#build-from-source" onClick={(e) => scrollToSection(e, 'build-from-source')}>Build from Source</a></li>
+              <li><a href="#troubleshooting" onClick={(e) => scrollToSection(e, 'troubleshooting')}>Troubleshooting</a></li>
             </ul>
           </div>
         </aside>
@@ -53,9 +69,8 @@ function Docs() {
             <h1>Terminus Documentation</h1>
             <p className="docs-intro">
               Everything you need to install, configure, and run Terminus as your AI agent command center.
-              This guide assumes you're comfortable with the terminal. If terms like <code>tmux</code>,
-              <code>ssh</code>, and <code>CLAUDE.md</code> are unfamiliar, you may want to start with the
-              linked resources below.
+              This guide assumes you're comfortable with the terminal. Each section links to
+              relevant external docs where needed.
             </p>
           </div>
 
@@ -71,7 +86,7 @@ function Docs() {
               <div className="req-card">
                 <div className="req-name">tmux</div>
                 <div className="req-detail">
-                  Terminal multiplexer that powers agent sessions. Install with{' '}
+                  Keeps agent sessions alive across disconnects and restarts. Install with{' '}
                   <code>brew install tmux</code>.{' '}
                   <a href="https://github.com/tmux/tmux/wiki" target="_blank" rel="noopener noreferrer">tmux docs</a>
                 </div>
@@ -79,7 +94,7 @@ function Docs() {
               <div className="req-card">
                 <div className="req-name">Git</div>
                 <div className="req-detail">
-                  Required for the Git Dashboard panel. Ships with macOS Xcode CLI tools:{' '}
+                  Required for the Git Dashboard panel. Ships with Xcode Command Line Tools:{' '}
                   <code>xcode-select --install</code>.{' '}
                   <a href="https://git-scm.com/doc" target="_blank" rel="noopener noreferrer">Git docs</a>
                 </div>
@@ -100,7 +115,7 @@ function Docs() {
             <h2>Installation</h2>
             <h3>Download the DMG</h3>
             <p>
-              Go to <a href="https://github.com/erikaflowers/terminus/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a> and download the DMG for your architecture:
+              Go to <a href="https://github.com/erikaflowers/terminus/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a> and download the DMG for your Mac:
             </p>
             <div className="code-block">
               <div className="code-header">Downloads</div>
@@ -117,7 +132,10 @@ Terminus-darwin-x64-0.14.1.dmg     # Intel Macs`}</pre>
               On first launch, Terminus creates its config directory at <code>~/.config/terminus/</code>.
               This is where agent preferences, connections, and settings live.
             </p>
-            <p>You'll see an empty terminal. The first thing to do is configure your paths in Settings.</p>
+            <p>
+              You'll see an empty terminal. The first thing to do is open Settings (<code>Cmd+,</code>)
+              and configure your <a href="#settings" onClick={(e) => scrollToSection(e, 'settings')}>paths and preferences</a>.
+            </p>
           </section>
 
           {/* ── macOS Gatekeeper ── */}
@@ -174,11 +192,11 @@ Terminus-darwin-x64-0.14.1.dmg     # Intel Macs`}</pre>
               </div>
               <div className="settings-row">
                 <div className="settings-key">Cloud Sync URL</div>
-                <div className="settings-val">Your cloud sync API endpoint. Required for cross-machine sync. Leave blank to disable cloud sync entirely.</div>
+                <div className="settings-val">Your sync backend's API endpoint (you host this yourself). Leave blank to disable cloud sync entirely.</div>
               </div>
               <div className="settings-row">
                 <div className="settings-key">Cloud Devices URL</div>
-                <div className="settings-val">Your devices registry endpoint. Used to track which machines are syncing.</div>
+                <div className="settings-val">API endpoint that lists your synced machines. Terminus registers each Mac here so you can see what's connected.</div>
               </div>
               <div className="settings-row">
                 <div className="settings-key">Cloud OAuth Client ID</div>
@@ -199,13 +217,13 @@ Terminus-darwin-x64-0.14.1.dmg     # Intel Macs`}</pre>
           <section id="agents" className="docs-section">
             <h2>Configuring Agents</h2>
             <p>
-              Agents are defined in an <code>agents.json</code> file inside your config directory.
-              Each agent has a name, role, color, and optional configuration.
+              Each agent lives in its own folder inside your Agents Path. The folder contains a{' '}
+              <code>CLAUDE.md</code> file that defines the agent's name, role, personality, and instructions.
+              Terminus scans this directory to populate the Crew Manager.
             </p>
             <h3>Agent folder structure</h3>
             <p>
-              Your Agents Path should contain one subdirectory per agent. Each agent directory should have
-              a <code>CLAUDE.md</code> file that defines the agent's personality, role, and instructions:
+              Create one subdirectory per agent. The naming convention is <code>agent-name</code> (lowercase):
             </p>
             <div className="code-block">
               <div className="code-header">File structure</div>
@@ -257,7 +275,7 @@ Your domain: Strategy, planning, cross-agent coordination.
             </p>
             <ol>
               <li>Create a <code>portraits/</code> folder inside your Agents Path</li>
-              <li>Add a JPG or PNG image for each agent, named exactly as the agent name with capital first letter</li>
+              <li>Add a JPG or PNG image for each agent, matching the agent name with a capital first letter (e.g., <code>Atlas.jpg</code> for agent "Atlas")</li>
               <li>Images should be at least <strong>100 x 100 pixels</strong> (square recommended)</li>
             </ol>
             <div className="code-block">
@@ -270,8 +288,8 @@ Your domain: Strategy, planning, cross-agent coordination.
             <div className="callout callout-info">
               <div className="callout-icon">i</div>
               <div>
-                If an avatar file isn't found, Terminus shows the agent's first initial on a colored background instead.
-                Avatars are purely cosmetic — agents work fine without them.
+                No avatar file? Terminus shows the agent's initial on a colored circle instead.
+                Avatars are cosmetic — agents work fine without them.
               </div>
             </div>
           </section>
@@ -280,8 +298,8 @@ Your domain: Strategy, planning, cross-agent coordination.
           <section id="tmux" className="docs-section">
             <h2>tmux Setup</h2>
             <p>
-              Terminus uses tmux sessions to persist agent work across disconnects and app restarts.
-              Each agent gets its own named tmux session.
+              Each agent gets its own named tmux session. Close a pane, quit Terminus, restart your Mac — the
+              session is still there when you come back.
             </p>
             <h3>Install tmux</h3>
             <div className="code-block">
