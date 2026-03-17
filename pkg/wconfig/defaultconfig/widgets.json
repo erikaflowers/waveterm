@@ -151,6 +151,16 @@
             }
         }
     },
+    "defwidget@clarion": {
+        "display:order": 8,
+        "icon": "waveform-lines",
+        "label": "clarion",
+        "blockdef": {
+            "meta": {
+                "view": "clarion"
+            }
+        }
+    },
     "defwidget@visualizer": {
         "display:order": 7,
         "icon": "music",

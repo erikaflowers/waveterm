@@ -58,6 +58,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "nodegraph") {
         return "diagram-project";
     }
+    if (view == "clarion") {
+        return "waveform-lines";
+    }
     return "square";
 }
 
@@ -109,6 +112,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "nodegraph") {
         return "Nodes";
+    }
+    if (view == "clarion") {
+        return "Clarion";
     }
     return view;
 }

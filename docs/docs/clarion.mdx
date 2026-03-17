@@ -1,0 +1,188 @@
+---
+sidebar_position: 3.7
+id: "clarion"
+title: "Clarion Voice"
+---
+
+# Clarion — Agent Voice Manager
+
+[Clarion](https://github.com/celanthe/clarion) gives your AI agents distinct, auditioned voices. Each crew member gets their own voice profile — backend, voice, speed — saved and portable. When agents speak during a Claude Code session, Clarion routes each message through the correct voice automatically.
+
+## Setup
+
+From your Terminus checkout:
+
+```bash
+./clarion/setup-terminus.sh
+```
+
+This installs the Clarion CLI tools, creates a default agent config, and registers the Claude Code stop hook for automatic voice routing.
+
+### Prerequisites
+
+- **Node.js 20+**
+- **Docker** (optional — required for Kokoro self-hosted TTS)
+
+## TTS Backends
+
+Clarion supports five TTS backends. Edge TTS works with zero configuration.
+
+| Backend | Config Required | Quality | Voices | Notes |
+|---------|----------------|---------|--------|-------|
+| **Edge TTS** | None | Good | 24 | Microsoft Translator API, always available |
+| **Kokoro** | Docker | Very good | 12 | Self-hosted, CPU-only, OpenAI-compatible |
+| **Piper** | Docker | Good | 6 | Self-hosted, very fast |
+| **ElevenLabs** | API key | Excellent | 11 | Paid API |
+| **Google Chirp 3 HD** | API key | Excellent | 18 | Paid API |
+
+### Quick Start (Edge TTS, zero config)
+
+Edge TTS requires no server and no API key. Just set a voice in your agent profile and go.
+
+### With Kokoro (self-hosted, higher quality)
+
+```bash
+cd clarion && docker-compose up -d
+# Kokoro at :8880, Clarion server at :8080
+```
+
+### With ElevenLabs or Google
+
+Set the API key in `clarion/server/.env`:
+
+```bash
+ELEVENLABS_API_KEY=sk-...
+# or
+GOOGLE_TTS_API_KEY=AIza...
+```
+
+Then start the server: `cd clarion/server && npm run dev`
+
+## Agent Profiles
+
+Agent profiles live in `~/.config/clarion/agents.json`:
+
+```json
+[
+  {
+    "id": "julian",
+    "name": "Julian",
+    "backend": "kokoro",
+    "voice": "am_michael",
+    "speed": 1.0
+  },
+  {
+    "id": "eliza",
+    "name": "Eliza",
+    "backend": "edge",
+    "voice": "en-GB-SoniaNeural",
+    "speed": 1.25
+  }
+]
+```
+
+Each agent has:
+- **id** — unique identifier (lowercase, used in CLI commands)
+- **name** — display name
+- **backend** — which TTS engine to use
+- **voice** — voice ID for that backend
+- **speed** — playback speed multiplier (1.0 = normal)
+
+### Voice Audition
+
+Use `clarion-init` to interactively audition voices against actual dialogue before committing to a profile. Or use the Clarion web UI (`npm run dev` from the `clarion/` directory) for a visual audition workflow.
+
+## Live Session Voice
+
+### clarion-watch (recommended)
+
+The `clarion-watch` daemon watches your Claude Code session and speaks each assistant message as it appears — before tools finish, while the agent is still working.
+
+```bash
+# Start watching the current directory's session
+clarion-watch --agent julian
+
+# Watch a specific project
+clarion-watch --agent eliza --cwd /path/to/project
+
+# Verbose mode for debugging
+clarion-watch --agent julian --verbose
+```
+
+When running multiple agents across different terminal sessions, each `clarion-watch` instance registers its session-to-agent mapping in `~/.config/clarion/sessions.json`. The stop hook reads this mapping to route voice correctly — no manual switching needed.
+
+### Running the Full Fleet
+
+To run all your agents with voice simultaneously:
+
+```bash
+# In each agent's terminal session:
+clarion-watch --agent julian &
+clarion-watch --agent eliza --cwd /path/to/other/project &
+# ... one per agent/session
+```
+
+Each watch daemon registers itself. The stop hook automatically looks up which agent owns each session and speaks as the correct voice.
+
+### Muting Agents
+
+```bash
+clarion-mute julian          # mute Julian
+clarion-mute julian --off    # unmute Julian
+```
+
+Muted agents are silenced in both `clarion-watch` and the stop hook. You can also mute/unmute from the Clarion panel in Terminus.
+
+## Clarion Panel
+
+The Clarion widget in the Terminus sidebar shows:
+
+- **Backend health** — status dots for each configured TTS backend
+- **Agent list** — all configured agents with voice, backend, speed, and mute status
+- **Live indicators** — which agents have active `clarion-watch` sessions
+- **Test button** — hear any agent's voice with a single click
+- **Mute/unmute** — toggle agent voice directly from the panel
+
+Add it from the widget bar (look for the waveform icon) or via the launcher.
+
+## CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `clarion-init` | Interactive setup wizard — audition voices, create agent profiles |
+| `clarion-speak` | Pipe text to an agent voice (outputs raw audio) |
+| `clarion-stream` | Stream text with sentence queuing and crew log |
+| `clarion-watch` | Persistent daemon for live session voice |
+| `clarion-mute` | Mute/unmute agents |
+| `clarion-log` | View crew message history |
+| `clarion-status` | Show server health, agent list, mute flags |
+
+## Server API
+
+```
+POST /speak
+{ "text": "Hello.", "voice": "en-GB-SoniaNeural", "backend": "edge", "speed": 1.0 }
+→ audio/mpeg
+
+GET /voices?backend=edge|kokoro|piper|elevenlabs|google
+→ { backend, voices: [{ id, label, lang, gender }] }
+
+GET /health
+→ { edge: "up", kokoro: "up|down|unconfigured", ... }
+```
+
+## Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `~/.config/clarion/config.json` | Server URL |
+| `~/.config/clarion/agents.json` | Agent voice profiles |
+| `~/.config/clarion/agents.state.json` | Mute state per agent |
+| `~/.config/clarion/sessions.json` | Active session-to-agent mappings (managed by clarion-watch) |
+| `~/.claude/clarion-hook.js` | Claude Code stop hook |
+| `~/.claude/settings.json` | Hook registration |
+
+## Links
+
+- **Source**: [github.com/celanthe/clarion](https://github.com/celanthe/clarion)
+- **Ported from**: [Everbloom Reader](https://everbloomreader.com) — the same TTS infrastructure, stripped of shared-infra complexity
