@@ -145,12 +145,29 @@ The Clarion widget in the Terminus sidebar shows:
 
 Add it from the widget bar (look for the waveform icon) or via the launcher.
 
+## Multi-Voice Sessions
+
+A single Claude Code session can speak as multiple agents. When the primary agent needs input from other crew members, it pipes their text through `clarion-speak`:
+
+```bash
+# Primary agent (Arynna) runs clarion-watch as usual
+clarion-watch --agent arynna --cwd /path/to/project
+
+# During a turn, the agent voices other crew members on demand:
+echo "Feedback from Callerovia" | clarion-speak --agent calle
+echo "Xanthe's notes" | clarion-speak --agent xanthe
+```
+
+Each `clarion-speak` call logs a hash of the spoken text to `~/.config/clarion/spoken.log`. When the stop hook fires at the end of the turn, it checks the log and skips any text that was already voiced — so crew feedback isn't repeated in the primary agent's voice.
+
+This enables collaborative workflows where multiple agents review, audit, or discuss within a single session, each speaking in their own voice.
+
 ## CLI Reference
 
 | Command | Description |
 |---------|-------------|
 | `clarion-init` | Interactive setup wizard — audition voices, create agent profiles |
-| `clarion-speak` | Pipe text to an agent voice (outputs raw audio) |
+| `clarion-speak` | Speak text as any agent on demand, with spoken-log dedup |
 | `clarion-stream` | Stream text with sentence queuing and crew log |
 | `clarion-watch` | Persistent daemon for live session voice |
 | `clarion-mute` | Mute/unmute agents |
@@ -179,6 +196,7 @@ GET /health
 | `~/.config/clarion/agents.json` | Agent voice profiles |
 | `~/.config/clarion/agents.state.json` | Mute state per agent |
 | `~/.config/clarion/sessions.json` | Active session-to-agent mappings (managed by clarion-watch) |
+| `~/.config/clarion/spoken.log` | Spoken-text hashes for multi-voice dedup (auto-cleared per turn) |
 | `~/.claude/clarion-hook.js` | Claude Code stop hook |
 | `~/.claude/settings.json` | Hook registration |
 
