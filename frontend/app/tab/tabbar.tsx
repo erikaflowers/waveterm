@@ -15,6 +15,7 @@ import { createRef, memo, useCallback, useEffect, useRef, useState } from "react
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
+import { ClaudeStatus } from "./claudestatus";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
@@ -202,6 +203,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const scrollableRef = useRef<boolean>(false);
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
+    const claudeStatusRef = useRef<HTMLDivElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
@@ -259,6 +261,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
         const waveAIButtonWidth = waveAIButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const claudeStatusWidth = claudeStatusRef.current?.getBoundingClientRect().width ?? 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -268,7 +271,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             configErrorWidth +
             appMenuButtonWidth +
             workspaceSwitcherWidth +
-            waveAIButtonWidth;
+            waveAIButtonWidth +
+            claudeStatusWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -714,6 +718,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
             <div className="tab-bar-right">
+                <ClaudeStatus divRef={claudeStatusRef} />
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
                 <div
