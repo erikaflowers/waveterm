@@ -137,11 +137,14 @@ Muted agents are silenced in both `clarion-watch` and the stop hook. You can als
 
 The Clarion widget in the Terminus sidebar shows:
 
-- **Backend health** — status dots for each configured TTS backend
+- **Backend health** — status dots for each configured TTS backend, with server version and diagnostic detail on hover
 - **Agent list** — all configured agents with voice, backend, speed, and mute status
 - **Live indicators** — which agents have active `clarion-watch` sessions
-- **Test button** — hear any agent's voice with a single click
+- **Backend down badges** — agents whose backend is unreachable, with one-click Edge TTS fallback
+- **Remediation hints** — inline tips for fixing backend issues (Docker, API keys, etc.)
+- **Test button** — hear any agent's voice with a single click (uses `clarion-speak`)
 - **Mute/unmute** — toggle agent voice directly from the panel
+- **Doctor button** — run `clarion-doctor` diagnostics from the panel footer
 
 Add it from the widget bar (look for the waveform icon) or via the launcher.
 
@@ -162,11 +165,42 @@ Each `clarion-speak` call logs a hash of the spoken text to `~/.config/clarion/s
 
 This enables collaborative workflows where multiple agents review, audit, or discuss within a single session, each speaking in their own voice.
 
+## Diagnostics (v0.4.0)
+
+### clarion-doctor
+
+Run `clarion-doctor` to diagnose setup issues. It checks 10 things — config files, server connectivity, backend health, hook installation, agent profiles — and prints pass/fail with remediation hints. Pure read-only, never writes anything.
+
+```bash
+clarion-doctor
+```
+
+The Clarion panel in Terminus also has a **Doctor** button in the footer that runs this for you.
+
+### Auto-Fallback
+
+When an agent's preferred backend is down, the server automatically falls back to Edge TTS. Responses include an `X-Clarion-Fallback` header so you know when this happens. The Clarion panel shows a **backend down** badge on affected agents with a one-click **Switch to Edge** button.
+
+### Setup Panel
+
+The Clarion web UI (`npm run dev`) now includes a Setup Panel showing:
+- Backend status cards with remediation hints
+- Agent health — which agents are affected by backend outages
+- Connection test button
+
+### Diagnostics API
+
+```
+GET /diagnostics
+→ { server: { version }, backends: { [name]: { status, configured, detail } } }
+```
+
 ## CLI Reference
 
 | Command | Description |
 |---------|-------------|
 | `clarion-init` | Interactive setup wizard — audition voices, create agent profiles |
+| `clarion-doctor` | Diagnose setup issues — 10 checks with remediation hints |
 | `clarion-speak` | Speak text as any agent on demand, with spoken-log dedup |
 | `clarion-stream` | Stream text with sentence queuing and crew log |
 | `clarion-watch` | Persistent daemon for live session voice |

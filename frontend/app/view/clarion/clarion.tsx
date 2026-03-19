@@ -29,6 +29,17 @@ type BackendHealth = {
     [backend: string]: "up" | "down" | "unconfigured";
 };
 
+type DiagnosticBackend = {
+    status: string;
+    configured: boolean;
+    detail: string;
+};
+
+type DiagnosticsData = {
+    server?: { version: string };
+    backends?: { [backend: string]: DiagnosticBackend };
+};
+
 // --- Config ---
 
 const CONFIG_DIR = "$HOME/.config/clarion";
@@ -84,6 +95,13 @@ function backendLabel(backend: string): string {
     return labels[backend] || backend;
 }
 
+const BACKEND_HINTS: Record<string, string> = {
+    kokoro: "Is Docker running? Start Docker Desktop, then: docker-compose up -d",
+    piper: "Is the Piper server running? Check PIPER_SERVER in your server .env",
+    elevenlabs: "API key may be expired or invalid. Renew at elevenlabs.io/account",
+    google: "API key may be invalid. Check GOOGLE_TTS_API_KEY in your server .env",
+};
+
 // --- ViewModel ---
 
 class ClarionViewModel implements ViewModel {
@@ -133,6 +151,7 @@ const AgentCard = React.memo(
         health,
         onToggleMute,
         onTest,
+        onSwitchToEdge,
     }: {
         agent: ClarionAgent;
         muted: boolean;
@@ -140,85 +159,126 @@ const AgentCard = React.memo(
         health: BackendHealth;
         onToggleMute: (id: string) => void;
         onTest: (id: string) => void;
+        onSwitchToEdge: (id: string) => void;
     }) => {
         const backendStatus = health[agent.backend] || "unconfigured";
+        const isDown = backendStatus === "down";
+        const canFallback = isDown && agent.backend !== "edge";
+        const hint = isDown ? BACKEND_HINTS[agent.backend] : null;
 
         return (
             <div
-                className="flex items-center gap-3 px-3 py-2 rounded-md"
+                className="flex flex-col gap-1 px-3 py-2 rounded-md"
                 style={{
                     background: muted ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.03)",
                     opacity: muted ? 0.5 : 1,
                     width: "100%",
                 }}
             >
-                <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="flex items-center gap-2">
-                        <span
-                            className="text-[13px] font-semibold truncate"
-                            style={{ color: "var(--main-text-color)" }}
-                        >
-                            {agent.name}
-                        </span>
-                        {sessionCount > 0 && (
+                <div className="flex items-center gap-3" style={{ width: "100%" }}>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
                             <span
-                                className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
-                                style={{
-                                    background: "rgba(34,197,94,0.15)",
-                                    color: "#22c55e",
-                                    border: "1px solid rgba(34,197,94,0.3)",
-                                }}
+                                className="text-[13px] font-semibold truncate"
+                                style={{ color: "var(--main-text-color)" }}
                             >
-                                live
+                                {agent.name}
                             </span>
-                        )}
+                            {sessionCount > 0 && (
+                                <span
+                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                    style={{
+                                        background: "rgba(34,197,94,0.15)",
+                                        color: "#22c55e",
+                                        border: "1px solid rgba(34,197,94,0.3)",
+                                    }}
+                                >
+                                    live
+                                </span>
+                            )}
+                            {canFallback && (
+                                <span
+                                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                    style={{
+                                        background: "rgba(251,191,36,0.15)",
+                                        color: "#fbbf24",
+                                        border: "1px solid rgba(251,191,36,0.3)",
+                                    }}
+                                >
+                                    backend down
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                            <BackendDot status={backendStatus} />
+                            <span className="text-muted">
+                                {backendLabel(agent.backend)} &middot; {agent.voice} &middot; {agent.speed}x
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                        <BackendDot status={backendStatus} />
-                        <span className="text-muted">
-                            {backendLabel(agent.backend)} &middot; {agent.voice} &middot; {agent.speed}x
-                        </span>
-                    </div>
-                </div>
 
-                <div className="flex gap-1 flex-shrink-0">
-                    <button
-                        onClick={() => onTest(agent.id)}
-                        className="px-2 py-1 text-[11px] rounded"
-                        style={{
-                            background: "rgba(255,255,255,0.08)",
-                            color: "var(--main-text-color)",
-                            border: "1px solid rgba(255,255,255,0.15)",
-                            cursor: "pointer",
-                        }}
-                        title={`Test ${agent.name}'s voice`}
-                    >
-                        <i className="fa-sharp fa-solid fa-play" style={{ fontSize: 9 }} />
-                    </button>
-                    <button
-                        onClick={() => onToggleMute(agent.id)}
-                        className="px-2 py-1 text-[11px] rounded"
-                        style={{
-                            background: muted ? "rgba(255,0,0,0.1)" : "rgba(255,255,255,0.08)",
-                            color: muted ? "#f87171" : "var(--main-text-color)",
-                            border: `1px solid ${muted ? "rgba(255,0,0,0.2)" : "rgba(255,255,255,0.15)"}`,
-                            cursor: "pointer",
-                        }}
-                        title={muted ? `Unmute ${agent.name}` : `Mute ${agent.name}`}
-                    >
-                        <i
-                            className={`fa-sharp fa-solid ${muted ? "fa-volume-xmark" : "fa-volume-high"}`}
-                            style={{ fontSize: 9 }}
-                        />
-                    </button>
+                    <div className="flex gap-1 flex-shrink-0">
+                        {canFallback && (
+                            <button
+                                onClick={() => onSwitchToEdge(agent.id)}
+                                className="px-2 py-1 text-[11px] rounded"
+                                style={{
+                                    background: "rgba(251,191,36,0.1)",
+                                    color: "#fbbf24",
+                                    border: "1px solid rgba(251,191,36,0.2)",
+                                    cursor: "pointer",
+                                }}
+                                title={`Switch ${agent.name} to Edge TTS (auto-fallback)`}
+                            >
+                                <i className="fa-sharp fa-solid fa-rotate" style={{ fontSize: 9 }} />
+                            </button>
+                        )}
+                        <button
+                            onClick={() => onTest(agent.id)}
+                            className="px-2 py-1 text-[11px] rounded"
+                            style={{
+                                background: "rgba(255,255,255,0.08)",
+                                color: "var(--main-text-color)",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                cursor: "pointer",
+                            }}
+                            title={`Test ${agent.name}'s voice`}
+                        >
+                            <i className="fa-sharp fa-solid fa-play" style={{ fontSize: 9 }} />
+                        </button>
+                        <button
+                            onClick={() => onToggleMute(agent.id)}
+                            className="px-2 py-1 text-[11px] rounded"
+                            style={{
+                                background: muted ? "rgba(255,0,0,0.1)" : "rgba(255,255,255,0.08)",
+                                color: muted ? "#f87171" : "var(--main-text-color)",
+                                border: `1px solid ${muted ? "rgba(255,0,0,0.2)" : "rgba(255,255,255,0.15)"}`,
+                                cursor: "pointer",
+                            }}
+                            title={muted ? `Unmute ${agent.name}` : `Mute ${agent.name}`}
+                        >
+                            <i
+                                className={`fa-sharp fa-solid ${muted ? "fa-volume-xmark" : "fa-volume-high"}`}
+                                style={{ fontSize: 9 }}
+                            />
+                        </button>
+                    </div>
                 </div>
+                {hint && (
+                    <div
+                        className="text-[10px] px-1 py-0.5 rounded"
+                        style={{ color: "#fbbf24", background: "rgba(251,191,36,0.05)" }}
+                    >
+                        {hint}
+                    </div>
+                )}
             </div>
         );
     }
 );
 AgentCard.displayName = "AgentCard";
 
-const HealthBar = React.memo(({ health }: { health: BackendHealth }) => {
+const HealthBar = React.memo(({ health, diagnostics }: { health: BackendHealth; diagnostics: DiagnosticsData | null }) => {
     const backends = Object.entries(health);
     if (backends.length === 0) return null;
 
@@ -227,12 +287,21 @@ const HealthBar = React.memo(({ health }: { health: BackendHealth }) => {
             className="flex items-center gap-3 px-3 py-1.5"
             style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
         >
-            {backends.map(([backend, status]) => (
-                <div key={backend} className="flex items-center gap-1.5 text-[10px] text-muted">
-                    <BackendDot status={status} />
-                    <span>{backendLabel(backend)}</span>
-                </div>
-            ))}
+            {diagnostics?.server?.version && (
+                <span className="text-[10px] text-muted" style={{ marginRight: 4 }}>
+                    v{diagnostics.server.version}
+                </span>
+            )}
+            {backends.map(([backend, status]) => {
+                const diag = diagnostics?.backends?.[backend];
+                const title = diag?.detail || status;
+                return (
+                    <div key={backend} className="flex items-center gap-1.5 text-[10px] text-muted" title={title}>
+                        <BackendDot status={diag?.status || status} />
+                        <span>{backendLabel(backend)}</span>
+                    </div>
+                );
+            })}
         </div>
     );
 });
@@ -245,6 +314,7 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
     const [agentState, setAgentState] = React.useState<AgentState>({});
     const [sessions, setSessions] = React.useState<SessionMap>({});
     const [health, setHealth] = React.useState<BackendHealth>({});
+    const [diagnostics, setDiagnostics] = React.useState<DiagnosticsData | null>(null);
     const [loading, setLoading] = React.useState(false);
     const [serverUrl, setServerUrl] = React.useState<string>("");
 
@@ -270,6 +340,16 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
                 }
             } catch {
                 setHealth({});
+            }
+
+            // Fetch diagnostics (v0.4.0+)
+            try {
+                const diagResult = await getApi().execCommand(`curl -s ${server}/diagnostics 2>/dev/null`);
+                if (diagResult.stdout?.trim()) {
+                    setDiagnostics(JSON.parse(diagResult.stdout));
+                }
+            } catch {
+                setDiagnostics(null);
             }
         } catch (e) {
             console.error("[clarion] Failed to refresh:", e);
@@ -299,8 +379,19 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
             const agent = agents.find((a) => a.id === agentId);
             if (!agent) return;
             await getApi().execCommand(
-                `echo "Hello, I am ${agent.name}." | clarion-stream --agent ${agentId} 2>/dev/null &`
+                `echo "Hello, I am ${agent.name}." | clarion-speak --agent ${agentId} 2>/dev/null &`
             );
+        },
+        [agents]
+    );
+
+    const handleSwitchToEdge = React.useCallback(
+        async (agentId: string) => {
+            const updated = agents.map((a) =>
+                a.id === agentId ? { ...a, backend: "edge", voice: "en-US-JennyNeural" } : a
+            );
+            setAgents(updated);
+            await writeJsonFile(AGENTS_FILE, updated);
         },
         [agents]
     );
@@ -346,7 +437,7 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
             </div>
 
             {/* Backend health */}
-            <HealthBar health={health} />
+            <HealthBar health={health} diagnostics={diagnostics} />
 
             {/* Agent list */}
             <div
@@ -371,6 +462,7 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
                         health={health}
                         onToggleMute={handleToggleMute}
                         onTest={handleTest}
+                        onSwitchToEdge={handleSwitchToEdge}
                     />
                 ))}
             </div>
@@ -378,10 +470,21 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
             {/* Footer */}
             {serverUrl && (
                 <div
-                    className="flex items-center px-3 py-1.5 text-[10px] text-muted border-t border-white/10"
+                    className="flex items-center justify-between px-3 py-1.5 text-[10px] text-muted border-t border-white/10"
                     style={{ width: "100%" }}
                 >
                     <span>Server: {serverUrl}</span>
+                    <button
+                        onClick={() => {
+                            getApi().execCommand("clarion-doctor 2>&1 | head -40");
+                        }}
+                        className="text-[10px] text-muted hover:text-white px-1.5 py-0.5 rounded"
+                        style={{ background: "rgba(255,255,255,0.05)", cursor: "pointer", border: "none" }}
+                        title="Run clarion-doctor diagnostics"
+                    >
+                        <i className="fa-sharp fa-solid fa-stethoscope" style={{ fontSize: 9, marginRight: 3 }} />
+                        Doctor
+                    </button>
                 </div>
             )}
         </div>
