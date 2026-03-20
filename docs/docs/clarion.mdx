@@ -109,12 +109,32 @@ clarion-watch --agent eliza --cwd /path/to/project
 clarion-watch --agent julian --verbose
 ```
 
-When running multiple agents across different terminal sessions, each `clarion-watch` instance registers its session-to-agent mapping in `~/.config/clarion/sessions.json`. The stop hook reads this mapping to route voice correctly — no manual switching needed.
+When running multiple agents across different terminal sessions, each `clarion-watch` instance registers its session-to-agent mapping in `~/.config/clarion/sessions.json`. Lock files are now per-project (`watcher-<slug>.lock`), so multiple watchers across different projects no longer conflict.
+
+### clarion-router (multi-agent mode)
+
+Instead of running one `clarion-watch` per agent, you can use the multi-agent router — a single process that watches all active projects and routes each message to the correct voice automatically.
+
+```bash
+# Via clarion-watch
+clarion-watch --multi
+
+# Directly
+clarion-router --default julian --verbose
+```
+
+The router detects which agent owns each session by checking Agent tool calls, "You are \<Name\>" patterns, and session mappings. All speech is serialized through a FIFO queue so agents never overlap. If a backend fails repeatedly, error output is suppressed to avoid log spam.
 
 ### Running the Full Fleet
 
-To run all your agents with voice simultaneously:
+Two approaches:
 
+**Option A — One router for everything (recommended):**
+```bash
+clarion-router --default julian
+```
+
+**Option B — One watcher per agent:**
 ```bash
 # In each agent's terminal session:
 clarion-watch --agent julian &
@@ -122,7 +142,7 @@ clarion-watch --agent eliza --cwd /path/to/other/project &
 # ... one per agent/session
 ```
 
-Each watch daemon registers itself. The stop hook automatically looks up which agent owns each session and speaks as the correct voice.
+With Option B, each watch daemon registers itself. The stop hook automatically looks up which agent owns each session and speaks as the correct voice.
 
 ### Muting Agents
 
@@ -195,6 +215,20 @@ GET /diagnostics
 → { server: { version }, backends: { [name]: { status, configured, detail } } }
 ```
 
+## Migrating from Terminus Agent Preferences
+
+If you already have voice settings in Terminus's agent preferences (`~/.config/terminus-dev/agent-preferences.json`), `clarion-migrate` can pull them into Clarion automatically:
+
+```bash
+# Preview what would change
+clarion-migrate --dry-run
+
+# Run the migration
+clarion-migrate
+```
+
+This merges `voiceBackend`, `voiceName`, and `voiceSpeed` fields into `~/.config/clarion/agents.json` and strips the migrated fields from the Terminus prefs. Safe to run multiple times — skips agents that already exist.
+
 ## CLI Reference
 
 | Command | Description |
@@ -203,7 +237,9 @@ GET /diagnostics
 | `clarion-doctor` | Diagnose setup issues — 10 checks with remediation hints |
 | `clarion-speak` | Speak text as any agent on demand, with spoken-log dedup |
 | `clarion-stream` | Stream text with sentence queuing and crew log |
-| `clarion-watch` | Persistent daemon for live session voice |
+| `clarion-watch` | Persistent daemon for live session voice (`--multi` for router mode) |
+| `clarion-router` | Multi-agent voice router — watches all projects, routes to correct voice |
+| `clarion-migrate` | One-time migration from Terminus agent preferences |
 | `clarion-mute` | Mute/unmute agents |
 | `clarion-log` | View crew message history |
 | `clarion-status` | Show server health, agent list, mute flags |
@@ -230,6 +266,8 @@ GET /health
 | `~/.config/clarion/agents.json` | Agent voice profiles |
 | `~/.config/clarion/agents.state.json` | Mute state per agent |
 | `~/.config/clarion/sessions.json` | Active session-to-agent mappings (managed by clarion-watch) |
+| `~/.config/clarion/watcher-*.lock` | Per-project watcher locks (one per active project) |
+| `~/.config/clarion/router.lock` | Router process lock (managed by clarion-router) |
 | `~/.config/clarion/spoken.log` | Spoken-text hashes for multi-voice dedup (auto-cleared per turn) |
 | `~/.claude/clarion-hook.js` | Claude Code stop hook |
 | `~/.claude/settings.json` | Hook registration |
