@@ -86,6 +86,10 @@ contextBridge.exposeInMainWorld("api", {
     terminusSyncPush: (configs: Record<string, any>) => ipcRenderer.invoke("terminus-sync-push", configs),
     terminusDevices: () => ipcRenderer.invoke("terminus-devices"),
     terminusSyncToggle: (enabled: boolean) => ipcRenderer.invoke("terminus-sync-toggle", enabled),
+
+    // Clarion TTS Server
+    clarionServerStatus: () => ipcRenderer.invoke("clarion:server-status"),
+    clarionRestartServer: () => ipcRenderer.invoke("clarion:restart-server"),
 });
 
 // Custom event for "new-window"

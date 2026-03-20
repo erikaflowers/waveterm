@@ -42,6 +42,7 @@ import {
     unamePlatform,
 } from "./emain-platform";
 import { ensureHotSpareTab, setMaxTabCacheSize } from "./emain-tabview";
+import { runClarionServer, stopClarionServer } from "./emain-clarion";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
@@ -312,6 +313,14 @@ electronApp.on("before-quit", (e) => {
     }
     setGlobalIsQuitting(true);
     updater?.stop();
+    // Stop the Clarion TTS server (non-blocking, best-effort)
+    fireAndForget(async () => {
+        try {
+            await stopClarionServer();
+        } catch (e) {
+            console.log("error stopping clarion server:", e);
+        }
+    });
     if (unamePlatform == "win32") {
         // win32 doesn't have a SIGINT, so we just let electron die, which
         // ends up killing wavesrv via closing it's stdin.
@@ -445,6 +454,16 @@ async function appMain() {
     makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
+
+    // Start the Clarion TTS server (fire-and-forget — non-blocking)
+    fireAndForget(async () => {
+        try {
+            await runClarionServer();
+            console.log("clarion server started successfully");
+        } catch (e) {
+            console.log("clarion server failed to start (non-fatal):", e);
+        }
+    });
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
     }

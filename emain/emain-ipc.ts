@@ -19,6 +19,7 @@ import {
     incrementTermCommandsWsl,
     setWasActive,
 } from "./emain-activity";
+import { getClarionStatus, runClarionServer, stopClarionServer } from "./emain-clarion";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
@@ -665,5 +666,21 @@ export function initIpcHandlers() {
         auth.sync_enabled = enabled;
         writeAuthState(auth);
         return { ok: true, syncEnabled: enabled };
+    });
+
+    // ── Clarion TTS Server ───────────────────────────────────
+
+    electron.ipcMain.handle("clarion:server-status", async () => {
+        return getClarionStatus();
+    });
+
+    electron.ipcMain.handle("clarion:restart-server", async () => {
+        try {
+            await stopClarionServer();
+            await runClarionServer();
+            return { ok: true, ...getClarionStatus() };
+        } catch (e) {
+            return { ok: false, error: (e as Error).message, ...getClarionStatus() };
+        }
     });
 }

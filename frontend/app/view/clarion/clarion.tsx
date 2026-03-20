@@ -69,8 +69,11 @@ async function readJsonFile<T>(path: string, fallback: T): Promise<T> {
 async function writeJsonFile(path: string, data: unknown): Promise<void> {
     const expanded = await expandPath(path);
     const configDir = await expandPath(CONFIG_DIR);
-    await getApi().execCommand(`mkdir -p ${configDir}`);
-    await getApi().writeTextFile(expanded, JSON.stringify(data, null, 2) + "\n");
+    await getApi().execCommand(`mkdir -p '${configDir}'`);
+    // Atomic write: write to temp file, then rename
+    const tmp = `${expanded}.${Date.now()}.tmp`;
+    await getApi().writeTextFile(tmp, JSON.stringify(data, null, 2) + "\n");
+    await getApi().execCommand(`mv '${tmp}' '${expanded}'`);
 }
 
 async function getClarionServer(): Promise<string> {
@@ -334,9 +337,9 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
 
             // Fetch backend health from Clarion server
             try {
-                const result = await getApi().execCommand(`curl -s ${server}/health 2>/dev/null`);
-                if (result.stdout?.trim()) {
-                    setHealth(JSON.parse(result.stdout));
+                const healthRes = await fetch(`${server}/health`);
+                if (healthRes.ok) {
+                    setHealth(await healthRes.json());
                 }
             } catch {
                 setHealth({});
@@ -344,9 +347,9 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
 
             // Fetch diagnostics (v0.4.0+)
             try {
-                const diagResult = await getApi().execCommand(`curl -s ${server}/diagnostics 2>/dev/null`);
-                if (diagResult.stdout?.trim()) {
-                    setDiagnostics(JSON.parse(diagResult.stdout));
+                const diagRes = await fetch(`${server}/diagnostics`);
+                if (diagRes.ok) {
+                    setDiagnostics(await diagRes.json());
                 }
             } catch {
                 setDiagnostics(null);
@@ -378,8 +381,11 @@ const ClarionView: React.FC<ViewComponentProps<ClarionViewModel>> = ({ model }) 
         async (agentId: string) => {
             const agent = agents.find((a) => a.id === agentId);
             if (!agent) return;
+            // Shell-escape agent name and ID to prevent injection
+            const safeName = agent.name.replace(/'/g, "'\\''");
+            const safeId = agentId.replace(/'/g, "'\\''");
             await getApi().execCommand(
-                `echo "Hello, I am ${agent.name}." | clarion-speak --agent ${agentId} 2>/dev/null &`
+                `echo 'Hello, I am ${safeName}.' | clarion-speak --agent '${safeId}' 2>/dev/null &`
             );
         },
         [agents]
