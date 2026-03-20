@@ -1,0 +1,3 @@
+[submodule "clarion"]
+	path = clarion
+	url = https://github.com/celanthe/clarion.git

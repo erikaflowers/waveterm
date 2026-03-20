@@ -31,6 +31,7 @@ Terminus includes several custom sidebar panels beyond the terminal:
 | **Usage Dashboard** | API cost tracking |
 | **Web Stats** | Plausible analytics dashboard (configurable API key + site) |
 | **Dev Servers** | Active dev server monitor (ports 3000-9999) with kill/open |
+| **Clarion** | Agent voice manager — TTS profiles, mute controls, live session routing ([source](https://github.com/celanthe/clarion)) |
 | **Node Graph** | Tmux session topology visualizer |
 
 ### Layout

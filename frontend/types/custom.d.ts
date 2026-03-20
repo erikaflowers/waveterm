@@ -160,6 +160,22 @@ declare global {
         terminusSyncPush: (configs: Record<string, any>) => Promise<{ ok: boolean; updated_at?: string; error?: string }>;
         terminusDevices: () => Promise<{ ok: boolean; devices?: any[]; error?: string }>;
         terminusSyncToggle: (enabled: boolean) => Promise<{ ok: boolean; syncEnabled?: boolean; error?: string }>;
+
+        // Clarion TTS Server
+        clarionServerStatus: () => Promise<{
+            running: boolean;
+            pid: number | null;
+            port: number;
+            restartCount: number;
+        }>;
+        clarionRestartServer: () => Promise<{
+            ok: boolean;
+            running: boolean;
+            pid: number | null;
+            port: number;
+            restartCount: number;
+            error?: string;
+        }>;
     };
 
     type ElectronContextMenuItem = {

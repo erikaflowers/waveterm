@@ -46,29 +46,26 @@ const globalConfigAtom = atom<GlobalConfig>({
 
 // Agent color table — crew manifest
 const AgentColorTable: Record<string, { color: string; role: string }> = {
-    julian: { color: "#6366F1", role: "Orchestrator" },
-    heavy: { color: "#22C55E", role: "Frontend" },
-    decker: { color: "#F59E0B", role: "Prose IDE" },
-    sellivan: { color: "#8B5CF6", role: "Repo & Docs" },
-    qin: { color: "#EF4444", role: "Code Auditor" },
-    lee: { color: "#06B6D4", role: "Marketing" },
-    manu: { color: "#F97316", role: "Operations" },
-    eliza: { color: "#EC4899", role: "Hard Problems" },
-    adoni: { color: "#A855F7", role: "Ghostwriter" },
-    siddig: { color: "#14B8A6", role: "Backend" },
-    renner: { color: "#84CC16", role: "Tool Hacker" },
-    clarke: { color: "#64748B", role: "Research" },
-    kogan: { color: "#D946EF", role: "Security" },
-    reed: { color: "#0EA5E9", role: "Intelligence" },
-    renic: { color: "#78716C", role: "DevOps" },
-    samantha: { color: "#FF00FF", role: "Systems Auteur" },
+    arynna: { color: "#22C55E", role: "Software Engineer" },
+    kilara: { color: "#06B6D4", role: "UX & Accessibility" },
+    callerovia: { color: "#F59E0B", role: "Marketing" },
+    xanthe: { color: "#EC4899", role: "Mobile Debugger" },
+    alarel: { color: "#6366F1", role: "Product Manager" },
+    athalia: { color: "#EF4444", role: "Security Engineer" },
+    vevette: { color: "#A855F7", role: "Legal & Compliance" },
+    isolde: { color: "#FBBF24", role: "Prose IDE" },
+    esmira: { color: "#DC2626", role: "Code Auditor" },
+    caldae: { color: "#F97316", role: "Operations" },
+    illaria: { color: "#84CC16", role: "Tool Hacker" },
+    arasellae: { color: "#64748B", role: "Research" },
 };
 
 // Crew themes defined in ~/.config/terminus-dev/termthemes.json
 // Convention: "crew-{lowercase_name}"
 const CREW_THEME_AGENTS = new Set([
-    "julian", "heavy", "decker", "sellivan", "qin",
-    "lee", "manu", "eliza", "siddig", "samantha",
+    "arynna", "kilara", "callerovia", "xanthe",
+    "alarel", "athalia", "vevette",
+    "isolde", "esmira", "caldae", "illaria", "arasellae",
 ]);
 
 function getDefaultTheme(name: string): string {

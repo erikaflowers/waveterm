@@ -1,0 +1,278 @@
+---
+sidebar_position: 3.7
+id: "clarion"
+title: "Clarion Voice"
+---
+
+# Clarion — Agent Voice Manager
+
+[Clarion](https://github.com/celanthe/clarion) gives your AI agents distinct, auditioned voices. Each crew member gets their own voice profile — backend, voice, speed — saved and portable. When agents speak during a Claude Code session, Clarion routes each message through the correct voice automatically.
+
+## Setup
+
+From your Terminus checkout:
+
+```bash
+./clarion/setup-terminus.sh
+```
+
+This installs the Clarion CLI tools, creates a default agent config, and registers the Claude Code stop hook for automatic voice routing.
+
+### Prerequisites
+
+- **Node.js 20+**
+- **Docker** (optional — required for Kokoro self-hosted TTS)
+
+## TTS Backends
+
+Clarion supports five TTS backends. Edge TTS works with zero configuration.
+
+| Backend | Config Required | Quality | Voices | Notes |
+|---------|----------------|---------|--------|-------|
+| **Edge TTS** | None | Good | 24 | Microsoft Translator API, always available |
+| **Kokoro** | Docker | Very good | 12 | Self-hosted, CPU-only, OpenAI-compatible |
+| **Piper** | Docker | Good | 6 | Self-hosted, very fast |
+| **ElevenLabs** | API key | Excellent | 11 | Paid API |
+| **Google Chirp 3 HD** | API key | Excellent | 18 | Paid API |
+
+### Quick Start (Edge TTS, zero config)
+
+Edge TTS requires no server and no API key. Just set a voice in your agent profile and go.
+
+### With Kokoro (self-hosted, higher quality)
+
+```bash
+cd clarion && docker-compose up -d
+# Kokoro at :8880, Clarion server at :8080
+```
+
+### With ElevenLabs or Google
+
+Set the API key in `clarion/server/.env`:
+
+```bash
+ELEVENLABS_API_KEY=sk-...
+# or
+GOOGLE_TTS_API_KEY=AIza...
+```
+
+Then start the server: `cd clarion/server && npm run dev`
+
+## Agent Profiles
+
+Agent profiles live in `~/.config/clarion/agents.json`:
+
+```json
+[
+  {
+    "id": "julian",
+    "name": "Julian",
+    "backend": "kokoro",
+    "voice": "am_michael",
+    "speed": 1.0
+  },
+  {
+    "id": "eliza",
+    "name": "Eliza",
+    "backend": "edge",
+    "voice": "en-GB-SoniaNeural",
+    "speed": 1.25
+  }
+]
+```
+
+Each agent has:
+- **id** — unique identifier (lowercase, used in CLI commands)
+- **name** — display name
+- **backend** — which TTS engine to use
+- **voice** — voice ID for that backend
+- **speed** — playback speed multiplier (1.0 = normal)
+
+### Voice Audition
+
+Use `clarion-init` to interactively audition voices against actual dialogue before committing to a profile. Or use the Clarion web UI (`npm run dev` from the `clarion/` directory) for a visual audition workflow.
+
+## Live Session Voice
+
+### clarion-watch (recommended)
+
+The `clarion-watch` daemon watches your Claude Code session and speaks each assistant message as it appears — before tools finish, while the agent is still working.
+
+```bash
+# Start watching the current directory's session
+clarion-watch --agent julian
+
+# Watch a specific project
+clarion-watch --agent eliza --cwd /path/to/project
+
+# Verbose mode for debugging
+clarion-watch --agent julian --verbose
+```
+
+When running multiple agents across different terminal sessions, each `clarion-watch` instance registers its session-to-agent mapping in `~/.config/clarion/sessions.json`. Lock files are now per-project (`watcher-<slug>.lock`), so multiple watchers across different projects no longer conflict.
+
+### clarion-router (multi-agent mode)
+
+Instead of running one `clarion-watch` per agent, you can use the multi-agent router — a single process that watches all active projects and routes each message to the correct voice automatically.
+
+```bash
+# Via clarion-watch
+clarion-watch --multi
+
+# Directly
+clarion-router --default julian --verbose
+```
+
+The router detects which agent owns each session by checking Agent tool calls, "You are \<Name\>" patterns, and session mappings. All speech is serialized through a FIFO queue so agents never overlap. If a backend fails repeatedly, error output is suppressed to avoid log spam.
+
+### Running the Full Fleet
+
+Two approaches:
+
+**Option A — One router for everything (recommended):**
+```bash
+clarion-router --default julian
+```
+
+**Option B — One watcher per agent:**
+```bash
+# In each agent's terminal session:
+clarion-watch --agent julian &
+clarion-watch --agent eliza --cwd /path/to/other/project &
+# ... one per agent/session
+```
+
+With Option B, each watch daemon registers itself. The stop hook automatically looks up which agent owns each session and speaks as the correct voice.
+
+### Muting Agents
+
+```bash
+clarion-mute julian          # mute Julian
+clarion-mute julian --off    # unmute Julian
+```
+
+Muted agents are silenced in both `clarion-watch` and the stop hook. You can also mute/unmute from the Clarion panel in Terminus.
+
+## Clarion Panel
+
+The Clarion widget in the Terminus sidebar shows:
+
+- **Backend health** — status dots for each configured TTS backend, with server version and diagnostic detail on hover
+- **Agent list** — all configured agents with voice, backend, speed, and mute status
+- **Live indicators** — which agents have active `clarion-watch` sessions
+- **Backend down badges** — agents whose backend is unreachable, with one-click Edge TTS fallback
+- **Remediation hints** — inline tips for fixing backend issues (Docker, API keys, etc.)
+- **Test button** — hear any agent's voice with a single click (uses `clarion-speak`)
+- **Mute/unmute** — toggle agent voice directly from the panel
+- **Doctor button** — run `clarion-doctor` diagnostics from the panel footer
+
+Add it from the widget bar (look for the waveform icon) or via the launcher.
+
+## Multi-Voice Sessions
+
+A single Claude Code session can speak as multiple agents. When the primary agent needs input from other crew members, it pipes their text through `clarion-speak`:
+
+```bash
+# Primary agent (Arynna) runs clarion-watch as usual
+clarion-watch --agent arynna --cwd /path/to/project
+
+# During a turn, the agent voices other crew members on demand:
+echo "Feedback from Callerovia" | clarion-speak --agent calle
+echo "Xanthe's notes" | clarion-speak --agent xanthe
+```
+
+Each `clarion-speak` call logs a hash of the spoken text to `~/.config/clarion/spoken.log`. When the stop hook fires at the end of the turn, it checks the log and skips any text that was already voiced — so crew feedback isn't repeated in the primary agent's voice.
+
+This enables collaborative workflows where multiple agents review, audit, or discuss within a single session, each speaking in their own voice.
+
+## Diagnostics (v0.4.0)
+
+### clarion-doctor
+
+Run `clarion-doctor` to diagnose setup issues. It checks 10 things — config files, server connectivity, backend health, hook installation, agent profiles — and prints pass/fail with remediation hints. Pure read-only, never writes anything.
+
+```bash
+clarion-doctor
+```
+
+The Clarion panel in Terminus also has a **Doctor** button in the footer that runs this for you.
+
+### Auto-Fallback
+
+When an agent's preferred backend is down, the server automatically falls back to Edge TTS. Responses include an `X-Clarion-Fallback` header so you know when this happens. The Clarion panel shows a **backend down** badge on affected agents with a one-click **Switch to Edge** button.
+
+### Setup Panel
+
+The Clarion web UI (`npm run dev`) now includes a Setup Panel showing:
+- Backend status cards with remediation hints
+- Agent health — which agents are affected by backend outages
+- Connection test button
+
+### Diagnostics API
+
+```
+GET /diagnostics
+→ { server: { version }, backends: { [name]: { status, configured, detail } } }
+```
+
+## Migrating from Terminus Agent Preferences
+
+If you already have voice settings in Terminus's agent preferences (`~/.config/terminus-dev/agent-preferences.json`), `clarion-migrate` can pull them into Clarion automatically:
+
+```bash
+# Preview what would change
+clarion-migrate --dry-run
+
+# Run the migration
+clarion-migrate
+```
+
+This merges `voiceBackend`, `voiceName`, and `voiceSpeed` fields into `~/.config/clarion/agents.json` and strips the migrated fields from the Terminus prefs. Safe to run multiple times — skips agents that already exist.
+
+## CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `clarion-init` | Interactive setup wizard — audition voices, create agent profiles |
+| `clarion-doctor` | Diagnose setup issues — 10 checks with remediation hints |
+| `clarion-speak` | Speak text as any agent on demand, with spoken-log dedup |
+| `clarion-stream` | Stream text with sentence queuing and crew log |
+| `clarion-watch` | Persistent daemon for live session voice (`--multi` for router mode) |
+| `clarion-router` | Multi-agent voice router — watches all projects, routes to correct voice |
+| `clarion-migrate` | One-time migration from Terminus agent preferences |
+| `clarion-mute` | Mute/unmute agents |
+| `clarion-log` | View crew message history |
+| `clarion-status` | Show server health, agent list, mute flags |
+
+## Server API
+
+```
+POST /speak
+{ "text": "Hello.", "voice": "en-GB-SoniaNeural", "backend": "edge", "speed": 1.0 }
+→ audio/mpeg
+
+GET /voices?backend=edge|kokoro|piper|elevenlabs|google
+→ { backend, voices: [{ id, label, lang, gender }] }
+
+GET /health
+→ { edge: "up", kokoro: "up|down|unconfigured", ... }
+```
+
+## Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `~/.config/clarion/config.json` | Server URL |
+| `~/.config/clarion/agents.json` | Agent voice profiles |
+| `~/.config/clarion/agents.state.json` | Mute state per agent |
+| `~/.config/clarion/sessions.json` | Active session-to-agent mappings (managed by clarion-watch) |
+| `~/.config/clarion/watcher-*.lock` | Per-project watcher locks (one per active project) |
+| `~/.config/clarion/router.lock` | Router process lock (managed by clarion-router) |
+| `~/.config/clarion/spoken.log` | Spoken-text hashes for multi-voice dedup (auto-cleared per turn) |
+| `~/.claude/clarion-hook.js` | Claude Code stop hook |
+| `~/.claude/settings.json` | Hook registration |
+
+## Links
+
+- **Source**: [github.com/celanthe/clarion](https://github.com/celanthe/clarion)
+- **Ported from**: [Everbloom Reader](https://everbloomreader.com) — the same TTS infrastructure, stripped of shared-infra complexity

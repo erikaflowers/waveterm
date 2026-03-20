@@ -22,7 +22,7 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
-const DevInitTimeoutMs = 5000;
+const DevInitTimeoutMs = 15000;
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -421,22 +421,22 @@ export class WaveBrowserWindow extends BaseWindow {
             return promise;
         }
         let timeoutHandle: ReturnType<typeof setTimeout> = null;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            timeoutHandle = setTimeout(() => {
-                console.log(
-                    `[dev] ${name} timed out after ${DevInitTimeoutMs}ms for tab ${tabId}, showing window for devtools`
-                );
-                if (!this.isDestroyed() && !this.isVisible()) {
-                    this.show();
-                }
-                if (this.activeTabView?.webContents && !this.activeTabView.webContents.isDevToolsOpened()) {
-                    this.activeTabView.webContents.openDevTools();
-                }
-                reject(new Error(`[dev] ${name} timed out after ${DevInitTimeoutMs}ms`));
-            }, DevInitTimeoutMs);
-        });
+        let timedOut = false;
+        timeoutHandle = setTimeout(() => {
+            timedOut = true;
+            console.warn(
+                `[dev] ${name} is slow (>${DevInitTimeoutMs}ms) for tab ${tabId}, still waiting...`
+            );
+            if (!this.isDestroyed() && !this.isVisible()) {
+                this.show();
+            }
+        }, DevInitTimeoutMs);
         try {
-            return await Promise.race([promise, timeoutPromise]);
+            const result = await promise;
+            if (timedOut) {
+                console.log(`[dev] ${name} eventually resolved for tab ${tabId}`);
+            }
+            return result;
         } finally {
             clearTimeout(timeoutHandle);
         }
